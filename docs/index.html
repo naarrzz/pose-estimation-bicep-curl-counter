@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Flex&amp;Count">
+  <title>Flex &amp; Count — Bicep Curl Rep Counter</title>
+  <meta name="description" content="Counts bicep curl reps in real time with pose estimation, right in your browser. Video never leaves your device.">
+  <script>
+    // Apply the saved theme before paint so there's no flash.
+    const t = localStorage.getItem("fc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="logo" aria-label="Flex and Count">FLEX<span>&amp;</span>COUNT</h1>
+    <p class="sub">Bicep curl rep counter · v2</p>
+  </header>
+
+  <!-- Camera / video -->
+  <section class="stage" id="stage">
+    <video id="video" playsinline muted></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="hud">
+      <div class="count glass" id="count">
+        <span id="countMain"><b id="reps">0</b><small>/<span id="goalHud">12</span></small></span>
+        <span id="countBoth" hidden><small>L</small><b id="repsL">0</b><small class="gap">R</small><b id="repsR">0</b><small>/<span id="goalHud2">12</span></small></span>
+      </div>
+      <div class="chip glass" id="stageChip">Ready</div>
+    </div>
+
+    <div class="cue" id="cue" hidden></div>
+
+    <div class="empty" id="overlay">
+      <p id="overlayText">Loading the pose model…</p>
+      <button class="btn primary" id="camBtn">Turn on camera</button>
+      <label class="btn">Use a video
+        <input type="file" id="fileInput" accept="video/*" hidden>
+      </label>
+    </div>
+  </section>
+
+  <!-- Trim (video only) -->
+  <section class="card" id="trimCard" hidden>
+    <div class="card-head">
+      <h2>Trim</h2>
+      <span class="muted" id="trimLen"></span>
+    </div>
+    <p class="hint">Drag the ends to skip the part where you walk to your spot.</p>
+    <div class="trim" id="trim">
+      <div class="trim-track"><div class="trim-sel" id="trimSel"></div></div>
+      <input type="range" id="trimStart" min="0" max="1" step="0.1" value="0" aria-label="Start">
+      <input type="range" id="trimEnd" min="0" max="1" step="0.1" value="1" aria-label="End">
+    </div>
+    <div class="trim-times"><span id="tStart">0:00</span><span id="tEnd">0:00</span></div>
+    <div class="actions">
+      <button class="btn" id="camBack">Use camera</button>
+      <label class="btn">Other video
+        <input type="file" id="fileInput2" accept="video/*" hidden>
+      </label>
+    </div>
+  </section>
+
+  <!-- Set up -->
+  <section class="card">
+    <div class="row">
+      <span class="k">Exercise</span>
+      <div class="seg" id="exSeg">
+        <button data-v="standing" class="on">Standing</button>
+        <button data-v="preacher">Preacher</button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="k">Arm</span>
+      <div class="seg" id="armSeg">
+        <button data-v="right" class="on">Right</button>
+        <button data-v="left">Left</button>
+        <button data-v="both">Both</button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="k">Goal <span class="muted" id="goalUnit"></span></span>
+      <div class="stepper">
+        <button class="btn" id="goalMinus" aria-label="Lower goal">−</button>
+        <b id="goal">12</b>
+        <button class="btn" id="goalPlus" aria-label="Raise goal">+</button>
+      </div>
+    </div>
+    <p class="hint" id="setupHint"></p>
+
+    <div class="actions">
+      <button class="btn primary big" id="startBtn" disabled>Start</button>
+      <button class="btn" id="resetBtn">Reset</button>
+      <button class="btn icon" id="flipBtn" aria-label="Switch camera" hidden>
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/><path d="M14 9.5l.4 1.6-1.6.3M10 16.5l-.4-1.6 1.6-.3"/></svg>
+      </button>
+      <button class="btn icon" id="soundBtn" aria-label="Sound on" aria-pressed="true">
+        <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- Session -->
+  <section class="card" id="setsCard" hidden>
+    <h2>This session</h2>
+    <div class="rows" id="sets"></div>
+  </section>
+
+  <!-- Looks -->
+  <section class="card">
+    <div class="row">
+      <span class="k">Looks</span>
+      <div class="seg" id="themeSeg">
+        <button data-v="auto">Auto</button>
+        <button data-v="light">Light</button>
+        <button data-v="dark">Dark</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="fine">Runs fully on your device with MediaPipe. Your video is never uploaded.</p>
+  <footer class="fine">
+    by Narz Angelo Alcaide ·
+    <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter">GitHub</a> ·
+    <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/blob/main/README-v1.md">v1</a>
+  </footer>
+</div>
+
+<!-- Set done pop up -->
+<div class="pop-wrap" id="done" hidden>
+  <div class="pop" role="dialog" aria-labelledby="doneTitle">
+    <h3 id="doneTitle">Set complete</h3>
+    <p id="doneSub"></p>
+    <button class="btn primary" id="nextBtn">Next set</button>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

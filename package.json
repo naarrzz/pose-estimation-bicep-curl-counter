@@ -1,0 +1,8 @@
+{
+  "name": "flex-and-count",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bicep curl rep counter with pose estimation, in the browser",
+  "scripts": { "test": "node --test" }
+}
