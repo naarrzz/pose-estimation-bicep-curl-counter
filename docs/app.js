@@ -3,12 +3,15 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=11";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=14";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
-// "full" is a little heavier than "lite" but holds the joints much steadier.
-const MODEL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+// "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
+const MODELS = {
+  fast: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+  accurate: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+};
+const IS_PHONE = matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 600;
 
 const $ = (id) => document.getElementById(id);
 const el = Object.fromEntries(
@@ -18,7 +21,7 @@ const el = Object.fromEntries(
     "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
-    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn",
+    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn", "qualitySeg",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -38,6 +41,7 @@ const state = {
   // Front-camera clips play un-mirrored, so they look flipped next to what you saw while recording.
   mirrorFile: saved.mirrorFile ?? true,
   goal: saved.goal || 12,
+  quality: saved.quality || (IS_PHONE ? "fast" : "accurate"),
   sound: saved.sound ?? true,
   counters: {},
   lastSeen: { left: 0, right: 0 },
@@ -47,19 +51,23 @@ const state = {
 };
 const save = () =>
   localStorage.setItem("fc-settings", JSON.stringify({
-    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound, fit: state.fit, mirrorFile: state.mirrorFile,
+    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound, fit: state.fit, mirrorFile: state.mirrorFile, quality: state.quality,
   }));
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 11;
+const BUILD = 14;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
+let fileset;
 async function loadModel() {
-  const fileset = await FilesetResolver.forVisionTasks(WASM);
+  fileset ??= await FilesetResolver.forVisionTasks(WASM);
+  const old = state.landmarker;
+  state.landmarker = null;
+  old?.close();
   const opts = (delegate) => ({
-    baseOptions: { modelAssetPath: MODEL, delegate },
+    baseOptions: { modelAssetPath: MODELS[state.quality], delegate },
     runningMode: "VIDEO",
     numPoses: 1,
   });
@@ -76,7 +84,7 @@ async function startCamera() {
   stopSource();
   try {
     state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: state.facing, width: { ideal: 1280 }, height: { ideal: 1280 } },
+      video: { facingMode: state.facing, width: { ideal: IS_PHONE ? 720 : 1280 }, height: { ideal: IS_PHONE ? 720 : 1280 } },
       audio: false,
     });
   } catch {
@@ -390,6 +398,9 @@ function render() {
   const label = state.running ? "Stop" : state.source === "file" ? "Count reps" : "Start";
   el.startLabel.textContent = label;
   el.startBtn.classList.toggle("running", state.running);
+  // Focus mode: while counting, only the count, the stage chip and Stop stay on screen.
+  document.body.classList.toggle("focus", state.running);
+  seg(el.qualitySeg, state.quality);
   el.startBtn.classList.toggle("long", label.length > 5);
   el.soundBtn.setAttribute("aria-checked", state.sound);
   seg(el.exSeg, state.exercise);
@@ -456,7 +467,10 @@ function setTheme(v) {
 function openSheet(open) {
   el.sheet.hidden = !open;
   el.scrim.hidden = !open;
-  if (open) seg(el.themeSeg, localStorage.getItem("fc-theme") || "auto");
+  if (open) {
+    seg(el.themeSeg, localStorage.getItem("fc-theme") || "auto");
+    seg(el.qualitySeg, state.quality);
+  }
 }
 
 function showDone(open) {
@@ -622,6 +636,14 @@ el.armSeg.onclick = (e) => {
   if (state.running) finishSet("stopped");
   resetCounters();
 };
+el.qualitySeg.onclick = (e) => {
+  const b = e.target.closest("button");
+  if (!b || b.dataset.v === state.quality) return;
+  state.quality = b.dataset.v;
+  save();
+  render();
+  loadModel().catch(() => (el.overlayText.textContent = "Couldn't load the pose model. Check your internet and refresh."));
+};
 el.themeSeg.onclick = (e) => {
   const b = e.target.closest("button");
   if (b) setTheme(b.dataset.v);
@@ -640,7 +662,15 @@ const controlsH = () => {
 };
 new ResizeObserver(controlsH).observe(document.querySelector(".controls"));
 window.addEventListener("resize", controlsH);
-[el.exSeg, el.armSeg, el.themeSeg].forEach(wireSegDrag);
+// A fresh home-screen launch can report its size late, so measure again a few times.
+window.visualViewport?.addEventListener("resize", controlsH);
+window.addEventListener("pageshow", controlsH);
+[0, 300, 1000].forEach((ms) => setTimeout(controlsH, ms));
+// Keep the page from scrolling under your finger (sheets and sliders still work).
+document.addEventListener("touchmove", (e) => {
+  if (!e.target.closest(".sheet, input")) e.preventDefault();
+}, { passive: false });
+[el.exSeg, el.armSeg, el.themeSeg, el.qualitySeg].forEach(wireSegDrag);
 el.flipBtn.disabled = true;
 newCounters();
 render();
