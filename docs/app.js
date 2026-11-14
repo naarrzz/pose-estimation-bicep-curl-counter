@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=18";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=19";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -21,7 +21,7 @@ const el = Object.fromEntries(
     "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
-    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn", "qualitySeg",
+    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn", "qualitySeg", "logActions", "saveLogs", "clearLogs", "confirm", "confirmScrim", "confirmCancel", "confirmClear",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -56,7 +56,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 18;
+const BUILD = 19;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -360,16 +360,13 @@ function finishSet(reason) {
       ? `L ${left.reps} · R ${right.reps}`
       : `${total} reps`;
     const armName = state.arm === "auto" ? "auto" : state.arm;
-    const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${armName}`;
     const strict = strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : "";
-    const row = document.createElement("div");
-    row.className = "r";
-    row.innerHTML = `<span>Set ${state.setNo} <span class="soft">${what}</span></span><span class="v">${label}${strict}</span>`;
-    el.sets.prepend(row);
-    el.sets.hidden = false;
-    el.setsEmpty.hidden = true;
-    el.logsBadge.textContent = state.setNo;
-    el.logsBadge.hidden = false;
+    logs.push({
+      at: Date.now(), exercise: state.exercise, arm: armName,
+      l: left.reps, r: right.reps, total, clean, strictCheck,
+    });
+    storeLogs();
+    renderLogs();
 
     if (reason !== "stopped") {
       el.doneTitle.textContent = reason === "goal" ? "Set complete" : "End of clip";
@@ -391,6 +388,93 @@ function resetCounters() {
   setStageChip(null);
   render();
 }
+
+// ---------- logs ----------
+// Every finished set is kept on this device (localStorage), grouped by day in the Logs sheet.
+const LOG_KEY = "fc-logs";
+let logs = (() => { try { return JSON.parse(localStorage.getItem(LOG_KEY) || "[]"); } catch { return []; } })();
+const storeLogs = () => localStorage.setItem(LOG_KEY, JSON.stringify(logs));
+const dayKey = (ms) => new Date(ms).toLocaleDateString("en-CA");
+const two = (n) => String(n).padStart(2, "0");
+const logLabel = (e) => (e.arm === "both" || e.arm === "auto" ? `L ${e.l} · R ${e.r}` : `${e.total} reps`);
+
+function dayTitle(key) {
+  const today = dayKey(Date.now());
+  const yesterday = dayKey(Date.now() - 864e5);
+  if (key === today) return "Today";
+  if (key === yesterday) return "Yesterday";
+  return new Date(`${key}T12:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function renderLogs() {
+  el.sets.innerHTML = "";
+  const byDay = new Map();
+  for (const e of [...logs].reverse()) {
+    const k = dayKey(e.at);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(e);
+  }
+  for (const [k, list] of byDay) {
+    const h = document.createElement("h3");
+    h.className = "day-title";
+    h.textContent = `${dayTitle(k)} · ${list.length} ${list.length === 1 ? "set" : "sets"}`;
+    const group = document.createElement("div");
+    group.className = "group";
+    for (const e of list) {
+      const t = new Date(e.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      const what = `${e.exercise === "preacher" ? "Preacher" : "Standing"} · ${e.arm}`;
+      const strict = e.strictCheck ? ` · <span class="${e.clean === e.total ? "ok" : "meh"}">${e.clean}/${e.total} strict</span>` : "";
+      const row = document.createElement("div");
+      row.className = "r";
+      row.innerHTML = `<span>${t} <span class="soft">${what}</span></span><span class="v">${logLabel(e)}${strict}</span>`;
+      group.append(row);
+    }
+    el.sets.append(h, group);
+  }
+  const has = logs.length > 0;
+  el.sets.hidden = !has;
+  el.setsEmpty.hidden = has;
+  el.logActions.hidden = !has;
+  const today = logs.filter((e) => dayKey(e.at) === dayKey(Date.now())).length;
+  el.logsBadge.textContent = today;
+  el.logsBadge.hidden = today === 0;
+}
+
+function logsCsv() {
+  const rows = [["Date", "Time", "Exercise", "Arm", "Left", "Right", "Total reps", "Strict reps"]];
+  for (const e of logs) {
+    const d = new Date(e.at);
+    rows.push([
+      dayKey(e.at), `${two(d.getHours())}:${two(d.getMinutes())}`,
+      e.exercise === "preacher" ? "Preacher" : "Standing", e.arm,
+      e.arm === "right" ? "" : e.l, e.arm === "left" ? "" : e.r, e.total, e.strictCheck ? e.clean : "",
+    ]);
+  }
+  return rows.map((r) => r.join(",")).join("\n") + "\n";
+}
+
+async function saveLogsFile() {
+  const name = `flex-and-count-logs-${dayKey(Date.now())}.csv`;
+  const csv = logsCsv();
+  // Android app: the page can't download a file itself, so the app saves it to Downloads.
+  if (window.FlexAndCountAndroid?.saveFile) {
+    window.FlexAndCountAndroid.saveFile(name, csv);
+    return;
+  }
+  const file = new File([csv], name, { type: "text/csv" });
+  // iPhone: the share sheet (Save to Files, AirDrop, Messages...).
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: "Flex & Count logs" }); } catch {}
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+const openConfirm = (open) => { el.confirm.hidden = !open; el.confirmScrim.hidden = !open; };
 
 // ---------- UI ----------
 function render() {
@@ -626,6 +710,16 @@ const openLogs = (open) => { el.logsSheet.hidden = !open; el.logsScrim.hidden = 
 el.logsBtn.onclick = () => openLogs(true);
 el.logsDone.onclick = () => openLogs(false);
 el.logsScrim.onclick = () => openLogs(false);
+el.saveLogs.onclick = saveLogsFile;
+el.clearLogs.onclick = () => openConfirm(true);
+el.confirmCancel.onclick = () => openConfirm(false);
+el.confirmScrim.onclick = () => openConfirm(false);
+el.confirmClear.onclick = () => {
+  logs = [];
+  storeLogs();
+  renderLogs();
+  openConfirm(false);
+};
 el.fitBtn.onclick = () => { state.fit = !state.fit; save(); render(); };
 el.mirrorBtn.onclick = () => {
   state.mirrorFile = !state.mirrorFile;
@@ -691,6 +785,7 @@ document.addEventListener("touchmove", (e) => {
 [el.exSeg, el.armSeg, el.themeSeg, el.qualitySeg].forEach(wireSegDrag);
 el.flipBtn.disabled = true;
 newCounters();
+renderLogs();
 render();
 loadModel()
   .then(() => requestAnimationFrame(loop))

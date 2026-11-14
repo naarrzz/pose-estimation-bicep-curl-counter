@@ -21,7 +21,7 @@
   <link rel="icon" href="icons/favicon-32.png?v=16" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=16">
   <link rel="manifest" href="manifest.webmanifest?v=16">
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -173,8 +173,24 @@
     <button class="glass lg pill small" id="logsDone">Done</button>
   </div>
   <p class="soft empty-note" id="setsEmpty">No sets yet. Finish a set and it shows up here.</p>
-  <div class="group" id="sets" hidden></div>
+  <div id="sets" hidden></div>
+  <div class="actions-row" id="logActions" hidden>
+    <button class="glass lg pill" id="saveLogs">Save logs</button>
+    <button class="glass lg pill danger" id="clearLogs">Clear logs</button>
+  </div>
+  <p class="fine">Logs stay on this device. Save them as a CSV file to keep a copy or open them in Sheets.</p>
 </section>
+
+<!-- Clear logs confirm -->
+<div class="scrim" id="confirmScrim" hidden></div>
+<div class="glass pop" id="confirm" role="alertdialog" aria-labelledby="confirmTitle" hidden>
+  <h3 id="confirmTitle">Clear all logs?</h3>
+  <p>This removes every set saved on this device. Save them first if you want a copy.</p>
+  <div class="pop-actions">
+    <button class="glass lg pill" id="confirmCancel">Cancel</button>
+    <button class="glass lg pill primary" id="confirmClear">Clear</button>
+  </div>
+</div>
 
 <!-- Set done -->
 <div class="scrim" id="doneScrim" hidden></div>
@@ -184,6 +200,6 @@
   <button class="glass lg pill primary" id="nextBtn">Next set</button>
 </div>
 
-<script type="module" src="app.js?v=18"></script>
+<script type="module" src="app.js?v=19"></script>
 </body>
 </html>

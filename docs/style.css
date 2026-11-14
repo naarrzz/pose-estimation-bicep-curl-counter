@@ -289,3 +289,13 @@ body.focus #logsBtn, body.focus #flipBtn, body.focus .top-right { opacity: 0; po
   .card-empty { gap: 10px; padding: 18px 18px 14px; }
   .big-logo { font-size: 30px; }
 }
+
+/* Logs */
+.day-title { font: 600 15px var(--display); margin: 10px 4px 6px; color: var(--glass-soft); }
+.actions-row { display: flex; gap: 10px; margin: 4px 0 6px; }
+.actions-row .pill { flex: 1; }
+.pill.danger { color: var(--accent); }
+.pop-actions { display: flex; gap: 10px; }
+.pop-actions .pill { flex: 1; }
+#confirm { z-index: 12; }
+#confirmScrim { z-index: 11; }

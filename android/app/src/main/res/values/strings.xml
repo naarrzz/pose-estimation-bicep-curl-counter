@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Flex &amp; Count</string>
     <string name="camera_needed">Flex &amp; Count needs the camera to count your reps. You can turn it on in Settings, or use a video.</string>
+    <string name="logs_saved">Saved %1$s to Downloads</string>
+    <string name="logs_not_saved">Couldn\'t save the logs file</string>
 </resources>
