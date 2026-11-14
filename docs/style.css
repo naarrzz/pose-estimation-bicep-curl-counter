@@ -143,7 +143,26 @@ a { color: inherit; }
 .seg .thumb { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px; background: var(--thumb);
   box-shadow: 0 2px 10px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .9);
   transition: left .5s var(--spring), width .5s var(--spring), transform .3s var(--spring); }
-.seg.pressing .thumb { transform: scale(1.08, 1.14); }
+.seg { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Holding swells the thumb. Dragging lifts it into a clear lens that follows the finger,
+   with a rim that splits light into faint color, like the Time Log tab bar. */
+.seg.holding .thumb { transform: scale(1.08, 1.14); }
+.seg.dragging .thumb {
+  transform: scale(1.16, 1.24);
+  transition: left .06s linear, width .25s var(--spring), transform .3s var(--spring), background-color .2s ease;
+  background: color-mix(in srgb, var(--thumb) 30%, transparent);
+  -webkit-backdrop-filter: blur(1.5px) saturate(1.5) brightness(1.1); backdrop-filter: blur(1.5px) saturate(1.5) brightness(1.1);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .7), inset 0 1px 1px rgba(255, 255, 255, .9), inset 0 -1px 2px rgba(0, 0, 0, .1), 0 8px 20px -6px rgba(0, 0, 0, .35);
+}
+.seg .thumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px; opacity: 0; transition: opacity .2s ease; pointer-events: none;
+  background: conic-gradient(from 210deg, rgba(90,200,250,.6), rgba(255,255,255,.3) 18%, rgba(255,214,90,.55) 34%, rgba(255,255,255,.3) 50%, rgba(255,120,220,.55) 66%, rgba(255,255,255,.3) 82%, rgba(90,200,250,.6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; }
+.seg.dragging .thumb::after { opacity: 1; }
+.seg.dragging button, .seg.dragging button.on { color: var(--glass-soft); transform: none !important; background: none !important; }
+.seg.dragging button.peek, .seg.dragging button.on.peek { color: var(--glass-ink); transform: scale(1.12) !important; }
+.seg .thumb.squish { animation: squish .45s ease-out; }
+@keyframes squish { 0% { transform: scale(1, 1); } 35% { transform: scale(1.18, .86); } 70% { transform: scale(.97, 1.04); } 100% { transform: scale(1, 1); } }
 .seg button { position: relative; z-index: 1; padding: 10px 18px; border-radius: 999px; font-weight: 600; font-size: 15px; color: var(--glass-soft); transition: color .25s ease, background-color .2s ease, transform .4s var(--spring); }
 .seg button.on { color: var(--thumb-ink); }
 @media (hover: hover) {
@@ -173,7 +192,9 @@ a { color: inherit; }
 .trim input { position: absolute; left: 0; top: 0; width: 100%; height: 34px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
 .trim input::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .25), inset 0 -1px 2px rgba(0, 0, 0, .08); cursor: grab; transition: transform .3s var(--spring); }
 .trim input::-webkit-slider-thumb:hover { transform: scale(1.15); }
-.trim input:active::-webkit-slider-thumb { transform: scale(1.25, 1.05); }
+.trim input:active::-webkit-slider-thumb { transform: scale(1.35, 1.2); background: rgba(255, 255, 255, .28); -webkit-backdrop-filter: blur(1.5px) saturate(1.5); backdrop-filter: blur(1.5px) saturate(1.5);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .85), inset 0 1px 2px rgba(255, 255, 255, .9), 0 0 0 1px rgba(255, 120, 220, .35), 0 0 0 2px rgba(90, 200, 250, .25), 0 8px 18px -4px rgba(0, 0, 0, .35); }
+.trim input:active::-moz-range-thumb { transform: scale(1.35, 1.2); background: rgba(255, 255, 255, .3); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .85), 0 8px 18px -4px rgba(0, 0, 0, .35); }
 .trim input::-moz-range-thumb { pointer-events: auto; width: 28px; height: 28px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .25); cursor: grab; }
 .trim input::-webkit-slider-runnable-track { background: none; }
 .trim-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--glass-soft); font-variant-numeric: tabular-nums; }

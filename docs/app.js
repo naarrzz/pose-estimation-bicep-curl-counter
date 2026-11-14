@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=5";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 const MODEL =
@@ -419,7 +419,7 @@ function wireGlass() {
     t.style.setProperty("--y", `${e.clientY - r.top}px`);
   }, { passive: true });
   document.addEventListener("pointerdown", (e) => {
-    const t = e.target.closest?.(".lg, .seg");
+    const t = e.target.closest?.(".lg");
     if (!t) return;
     const r = t.getBoundingClientRect();
     t.style.setProperty("--x", `${e.clientX - r.left}px`);
@@ -430,6 +430,75 @@ function wireGlass() {
   document.addEventListener("pointerup", release);
   document.addEventListener("pointercancel", release);
   document.addEventListener("pointerleave", release);
+}
+
+// Hold a segmented control and slide, like the Time Log tab bar: the thumb swells into a lens,
+// follows your finger, and letting go picks the option under it. A quick tap just picks and squishes.
+function wireSegDrag(node) {
+  const thumb = node.querySelector(".thumb");
+  const buttons = [...node.querySelectorAll("button")];
+  let held = null, justDragged = false, lensTimer = null;
+
+  const under = (x) => {
+    let best = buttons[0], dist = Infinity;
+    for (const b of buttons) {
+      const r = b.getBoundingClientRect();
+      const d = Math.abs(x - (r.left + r.width / 2));
+      if (d < dist) { dist = d; best = b; }
+    }
+    return best;
+  };
+  const place = (x) => {
+    const box = node.getBoundingClientRect();
+    const target = under(x);
+    const w = target.offsetWidth;
+    const pad = buttons[0].offsetLeft;
+    const left = Math.min(Math.max(x - box.left - w / 2, pad), box.width - pad - w);
+    thumb.style.left = `${left}px`;
+    thumb.style.width = `${w}px`;
+    buttons.forEach((b) => b.classList.toggle("peek", b === target));
+    return target;
+  };
+  const startDrag = (x) => {
+    clearTimeout(lensTimer);
+    held.dragging = true;
+    node.classList.add("dragging");
+    place(x);
+  };
+  const end = (e) => {
+    if (!held) return;
+    clearTimeout(lensTimer);
+    const pick = held.dragging && e ? place(e.clientX) : null;
+    if (held.dragging) { justDragged = true; setTimeout(() => (justDragged = false), 400); }
+    held = null;
+    node.classList.remove("holding", "dragging");
+    buttons.forEach((b) => b.classList.remove("peek"));
+    if (pick) pick.click();
+    else squish();
+  };
+  const squish = () => {
+    thumb.classList.remove("squish");
+    void thumb.offsetWidth;
+    thumb.classList.add("squish");
+  };
+
+  node.addEventListener("pointerdown", (e) => {
+    held = { x: e.clientX, dragging: false };
+    node.classList.add("holding");
+    lensTimer = setTimeout(() => { if (held) startDrag(held.x); }, 180);
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!held) return;
+    if (!held.dragging && Math.abs(e.clientX - held.x) < 6) return;
+    if (!held.dragging) startDrag(e.clientX); else place(e.clientX);
+  });
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", () => end(null));
+  // The browser can still send its own tap after a drag; the drag already decided.
+  node.addEventListener("click", (e) => {
+    if (justDragged && e.isTrusted) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  thumb.addEventListener("animationend", () => thumb.classList.remove("squish"));
 }
 
 // ---------- events ----------
@@ -496,6 +565,7 @@ window.addEventListener("resize", () => { seg(el.exSeg, state.exercise); seg(el.
 document.fonts?.ready.then(() => render());
 
 wireGlass();
+[el.exSeg, el.armSeg, el.themeSeg].forEach(wireSegDrag);
 el.flipBtn.disabled = true;
 newCounters();
 render();
