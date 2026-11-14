@@ -123,9 +123,12 @@ a { color: inherit; }
 .top-right { display: flex; gap: 8px; align-items: center; }
 #fitBtn { min-width: 52px; }
 
-.empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; z-index: 5; pointer-events: none; }
+/* The start card sits in the space between the top readout and the controls, so it never covers them
+   (on shorter iPhones it used to overlap the hint). */
+.empty { position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 160px); bottom: var(--controls-h, 250px); display: grid; place-items: center; padding: 8px 20px; z-index: 5; pointer-events: none; }
+body.idle .hint { display: none; }
 .empty .card-empty { pointer-events: auto; }
-.card-empty { width: min(340px, 100%); border-radius: 36px; padding: 28px 22px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.card-empty { width: min(340px, 100%); max-height: 100%; overflow: auto; border-radius: 36px; padding: 24px 22px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .card-empty p { margin: 0; color: var(--glass-soft); }
 .card-empty .pill { width: 100%; }
 .card-empty .fine { font-size: 12px; margin-top: 4px; }
@@ -280,3 +283,9 @@ a { color: inherit; }
 .hint, #exSeg, #armSeg, .trimbar, #logsBtn, #flipBtn, .top-right > :not(#settingsBtn) { transition: opacity .3s ease, transform .4s var(--spring); }
 body.focus .hint, body.focus #exSeg, body.focus #armSeg, body.focus .trimbar { display: none; }
 body.focus #logsBtn, body.focus #flipBtn, body.focus .top-right { opacity: 0; pointer-events: none; }
+
+@media (max-height: 760px) {
+  .empty { top: calc(env(safe-area-inset-top) + 130px); }
+  .card-empty { gap: 10px; padding: 18px 18px 14px; }
+  .big-logo { font-size: 30px; }
+}

@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=17";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=18";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -56,7 +56,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 17;
+const BUILD = 18;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -91,6 +91,7 @@ async function startCamera() {
     el.overlay.hidden = false;
     el.overlayText.textContent =
       "Camera blocked or not found. Allow camera access in your browser settings, or use a video.";
+    render();
     return;
   }
   el.video.srcObject = state.stream;
@@ -101,6 +102,8 @@ async function startCamera() {
   el.overlay.hidden = true;
   el.trimBar.hidden = true;
   el.startBtn.disabled = false;
+  // iOS and Android call any camera use "recording"; say plainly that nothing is kept.
+  showCue("Camera on. Nothing is recorded or saved.");
   const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
   el.flipBtn.disabled = cams.length < 2;
   render();
@@ -391,6 +394,7 @@ function resetCounters() {
 
 // ---------- UI ----------
 function render() {
+  document.body.classList.toggle("idle", !el.overlay.hidden);
   el.stage.classList.toggle("fit", state.fit);
   el.fitBtn.textContent = state.fit ? "Fit" : "Fill";
   el.mirrorBtn.setAttribute("aria-pressed", state.mirrorFile);

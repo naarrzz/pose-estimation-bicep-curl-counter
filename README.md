@@ -5,13 +5,17 @@
 Counts bicep curl reps in real time with pose estimation. v2 runs in the browser: open the link, allow the camera, and start curling. No install, no Jupyter.
 
 <p>
-  <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/releases/latest/download/FlexAndCount.apk"><img src="https://img.shields.io/badge/Download-Flex%20%26%20Count.apk-FF2A2F?style=for-the-badge&logo=android&logoColor=white" alt="Download Flex & Count.apk for Android"></a>
-  <a href="https://naarrzz.github.io/pose-estimation-bicep-curl-counter/"><img src="https://img.shields.io/badge/Open-web%20app-111111?style=for-the-badge&logo=safari&logoColor=white" alt="Open the web app"></a>
+  <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/releases/latest/download/FlexAndCount.apk"><img src="https://img.shields.io/badge/Download%20Flex%20%26%20Count.apk-FF2A2F?style=for-the-badge&logo=android&logoColor=white" alt="Download Flex & Count.apk for Android"></a>
+  <a href="https://naarrzz.github.io/pose-estimation-bicep-curl-counter/"><img src="https://img.shields.io/badge/iOS%20%2F%20Web-111111?style=for-the-badge&logo=apple&logoColor=white" alt="Open on iOS or the web"></a>
 </p>
 
 **Try it:** https://naarrzz.github.io/pose-estimation-bicep-curl-counter/ · on iPhone, Share → Add to Home Screen for a full-screen app.
 
-> **Looking for the original?** v1 (Python, Jupyter Notebook, Tkinter) is still in this repo, untouched: the [notebook](Flex%20and%20Count%E2%80%94Pose%20Estimation%20for%20Tracking%20Bicep%20Curl%20Reps.ipynb), [requirements.txt](requirements.txt), the [paper](Alcaide%20Pizarra%20Finals%20Project%20Paper.pdf), the [presentation](Presentation%20Flex%20and%20Count%20%E2%80%94%20Pose%20Estimation%20for%20Tracking%20Bicep%20Curl%20Reps.pdf), and its [original README](README-v1.md). Tag [`v1.0.0`](https://github.com/naarrzz/pose-estimation-bicep-curl-counter/tree/v1.0.0) is the repo exactly as it was.
+## It started as a school project
+
+Flex & Count began as our finals project: a Python app (Jupyter Notebook + Tkinter, MediaPipe + OpenCV) that counted right-arm bicep curls from a laptop webcam. That first version is still here, untouched: the [notebook](Flex%20and%20Count%E2%80%94Pose%20Estimation%20for%20Tracking%20Bicep%20Curl%20Reps.ipynb), [requirements.txt](requirements.txt), the [paper](Alcaide%20Pizarra%20Finals%20Project%20Paper.pdf), the [presentation](Presentation%20Flex%20and%20Count%20%E2%80%94%20Pose%20Estimation%20for%20Tracking%20Bicep%20Curl%20Reps.pdf), and its [original README](README-v1.md). Tag [`v1.0.0`](https://github.com/naarrzz/pose-estimation-bicep-curl-counter/tree/v1.0.0) is the repo exactly as it was.
+
+v2 takes the same idea out of the notebook and into your pocket: a phone-first web app and an Android app that count both arms, standing or preacher, from the camera or a recorded video.
 
 ## What's new in v2
 
