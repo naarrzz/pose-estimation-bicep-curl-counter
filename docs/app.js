@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=7";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=8";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" is a little heavier than "lite" but holds the joints much steadier.
@@ -49,6 +49,8 @@ const save = () =>
   }));
 
 const ACCENT = "#FF453A";
+// Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
+const BUILD = 8;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -615,6 +617,7 @@ window.addEventListener("resize", () => { seg(el.exSeg, state.exercise); seg(el.
 document.fonts?.ready.then(() => render());
 
 wireGlass();
+document.getElementById("ver").textContent = `Version 2 · build ${BUILD}`;
 // Fit mode keeps the camera above the controls, so it needs to know how tall they are.
 const controlsH = () => {
   const h = window.innerHeight - document.querySelector(".controls").getBoundingClientRect().top + 8;

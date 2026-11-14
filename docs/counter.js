@@ -55,7 +55,7 @@ export function readArm(landmarks, side, { minVisibility = 0.65, margin = 0.02 }
 //  - swing: the elbow drifted more than maxDrift during the rep (null = no check)
 //  - cap: stop counting this arm once it reaches the goal (alternating curls)
 //  - glitch guard: a single-frame jump bigger than maxJump is ignored unless it holds,
-//    and a rep faster than minRepMs (down to up) is thrown out. Real curls aren't that fast.
+//    and a rep that's impossibly quick (minCurlMs, minGapMs) is thrown out.
 export function createRepCounter({
   downAngle = 160,
   upAngle = 50,
@@ -67,7 +67,8 @@ export function createRepCounter({
   cap = Infinity,
   maxJump = 100,
   holdFrames = 3,
-  minRepMs = 250,
+  minCurlMs = 120, // a curl from the fullest stretch to curled can't be quicker than this
+  minGapMs = 450, // nor can two reps of the same arm come closer than this
 } = {}) {
   let stage = null;
   let reps = 0;
@@ -75,7 +76,8 @@ export function createRepCounter({
   let smooth = null;
   let peakDrift = 0;
   let jumpCount = 0;
-  let downAt = null; // when the arm last left full extension
+  let downAt = null; // when the arm was last at its fullest stretch
+  let lastRepAt = null;
   let range = { min: 180, max: 0 }; // recent range of motion, for picking the working arm
   let valley = Infinity; // lowest angle since the last rep (the curled end)
   let peak = -Infinity; // highest angle since the arm went "down" (the extended end)
@@ -109,10 +111,11 @@ export function createRepCounter({
         downAt = t;
       } else if (curled && stage === "down" && reps < cap) {
         valley = smooth;
-        const tooFast = t !== null && downAt !== null && t - downAt < minRepMs;
+        const tooFast = t !== null && ((downAt !== null && t - downAt < minCurlMs) || (lastRepAt !== null && t - lastRepAt < minGapMs));
         stage = "up";
         if (!tooFast) {
           reps += 1;
+          lastRepAt = t;
           const swing = maxDrift !== null && peakDrift > maxDrift;
           if (!swing) clean += 1;
           rep = { n: reps, swing };

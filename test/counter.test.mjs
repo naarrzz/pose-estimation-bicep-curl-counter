@@ -76,12 +76,14 @@ test("glitch guard: a jump that holds is real", () => {
   assert.equal(c.reps, 1);
 });
 
-test("speed check: a 'rep' faster than a real curl is thrown out", () => {
+test("speed check: an impossibly quick 'rep' is thrown out, a fast real one counts", () => {
   const c = createRepCounter();
-  const at = (angles, t0, dt) => angles.map((a, i) => c.update(a, 10, t0 + i * dt));
-  at([170, 170, 120, 80, 40, 30, 30], 0, 30); // ~120 ms from extension to curled
+  const at = (angles, t0, dt) => angles.forEach((a, i) => c.update(a, 10, t0 + i * dt));
+  at([170, 170, 120, 80, 40, 30, 30], 0, 15); // ~75 ms from stretch to curled: a glitch
   assert.equal(c.reps, 0);
-  at([60, 100, 140, 170, 170, 170, 170, 140, 110, 80, 50, 35, 30, 30], 1000, 80); // ~560 ms: a real rep
+  at([60, 100, 140, 170, 170, 170, 170, 120, 80, 40, 30, 30], 1000, 66); // fast curl, ~250 ms
+  assert.equal(c.reps, 1);
+  at([60, 100, 140, 170, 170, 120, 80, 40, 30], 1700, 20); // second "rep" right after: too close
   assert.equal(c.reps, 1);
 });
 
