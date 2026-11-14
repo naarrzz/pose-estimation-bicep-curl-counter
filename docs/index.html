@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Flex&amp;Count">
   <title>Flex &amp; Count — Bicep Curl Rep Counter</title>
   <meta name="description" content="Counts bicep curl reps in real time with pose estimation, right in your browser. Video never leaves your device.">
@@ -20,129 +20,132 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
-  <header class="top">
-    <h1 class="logo" aria-label="Flex and Count">FLEX<span>&amp;</span>COUNT</h1>
-    <p class="sub">Bicep curl rep counter · v2</p>
-  </header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/><path d="M14 9.5l.4 1.6-1.6.3M10 16.5l-.4-1.6 1.6-.3"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></symbol>
+</svg>
 
-  <!-- Camera / video -->
-  <section class="stage" id="stage">
-    <video id="video" playsinline muted></video>
-    <canvas id="canvas"></canvas>
+<main class="stage" id="stage">
+  <video id="video" playsinline muted></video>
+  <canvas id="canvas"></canvas>
 
-    <div class="hud">
-      <div class="count glass" id="count">
-        <span id="countMain"><b id="reps">0</b><small>/<span id="goalHud">12</span></small></span>
-        <span id="countBoth" hidden><small>L</small><b id="repsL">0</b><small class="gap">R</small><b id="repsR">0</b><small>/<span id="goalHud2">12</span></small></span>
-      </div>
-      <div class="chip glass" id="stageChip">Ready</div>
-    </div>
-
-    <div class="cue" id="cue" hidden></div>
-
-    <div class="empty" id="overlay">
+  <!-- Before a camera or video is picked -->
+  <div class="empty" id="overlay">
+    <div class="glass card-empty">
+      <p class="logo big-logo">FLEX<span>&amp;</span>COUNT</p>
       <p id="overlayText">Loading the pose model…</p>
-      <button class="btn primary" id="camBtn">Turn on camera</button>
-      <label class="btn">Use a video
+      <button class="glass lg pill primary" id="camBtn">Turn on camera</button>
+      <label class="glass lg pill">Use a video
         <input type="file" id="fileInput" accept="video/*" hidden>
       </label>
+      <p class="fine">Runs on your device. Your video is never uploaded.</p>
     </div>
-  </section>
+  </div>
 
-  <!-- Trim (video only) -->
-  <section class="card" id="trimCard" hidden>
-    <div class="card-head">
-      <h2>Trim</h2>
-      <span class="muted" id="trimLen"></span>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="glass logo-pill"><span class="logo">FLEX<span>&amp;</span>COUNT</span></div>
+    <button class="glass lg round" id="settingsBtn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+  </header>
+
+  <!-- Live readout -->
+  <div class="readout">
+    <div class="glass count" id="count">
+      <span id="countMain"><b id="reps">0</b><small>/<span id="goalHud">12</span></small></span>
+      <span id="countBoth" hidden><i>L</i><b id="repsL">0</b><i class="gap">R</i><b id="repsR">0</b><small>/<span id="goalHud2">12</span></small></span>
     </div>
-    <p class="hint">Drag the ends to skip the part where you walk to your spot.</p>
-    <div class="trim" id="trim">
-      <div class="trim-track"><div class="trim-sel" id="trimSel"></div></div>
-      <input type="range" id="trimStart" min="0" max="1" step="0.1" value="0" aria-label="Start">
-      <input type="range" id="trimEnd" min="0" max="1" step="0.1" value="1" aria-label="End">
+    <div class="glass chip" id="stageChip"><span class="dot"></span><span id="stageText">Ready</span></div>
+  </div>
+
+  <div class="glass cue" id="cue" hidden></div>
+
+  <!-- Bottom controls -->
+  <footer class="controls">
+    <!-- Trim, only for a video -->
+    <div class="glass trimbar" id="trimBar" hidden>
+      <div class="trim-head">
+        <span><b>Trim</b> <span class="soft" id="trimLen"></span></span>
+        <button class="glass lg pill small" id="camBack"><svg><use href="#i-camera"/></svg>Camera</button>
+      </div>
+      <div class="trim">
+        <div class="trim-track"><div class="trim-sel" id="trimSel"></div></div>
+        <input type="range" id="trimStart" min="0" max="1" step="0.1" value="0" aria-label="Start">
+        <input type="range" id="trimEnd" min="0" max="1" step="0.1" value="1" aria-label="End">
+      </div>
+      <div class="trim-times"><span id="tStart">0:00</span><span id="tEnd">0:00</span></div>
     </div>
-    <div class="trim-times"><span id="tStart">0:00</span><span id="tEnd">0:00</span></div>
-    <div class="actions">
-      <button class="btn" id="camBack">Use camera</button>
-      <label class="btn">Other video
+
+    <p class="glass hint" id="setupHint"></p>
+
+    <div class="glass seg" id="exSeg" role="radiogroup" aria-label="Exercise">
+      <span class="thumb"></span>
+      <button data-v="standing" class="on">Standing</button>
+      <button data-v="preacher">Preacher</button>
+    </div>
+    <div class="glass seg" id="armSeg" role="radiogroup" aria-label="Arm">
+      <span class="thumb"></span>
+      <button data-v="right" class="on">Right</button>
+      <button data-v="left">Left</button>
+      <button data-v="both">Both</button>
+    </div>
+
+    <div class="shutter-row">
+      <label class="glass lg round big" aria-label="Use a video">
+        <svg><use href="#i-video"/></svg>
         <input type="file" id="fileInput2" accept="video/*" hidden>
       </label>
+      <button class="glass lg shutter" id="startBtn" disabled><span id="startLabel">Start</span></button>
+      <button class="glass lg round big" id="flipBtn" aria-label="Switch camera"><svg><use href="#i-flip"/></svg></button>
     </div>
-  </section>
+  </footer>
+</main>
 
-  <!-- Set up -->
-  <section class="card">
-    <div class="row">
-      <span class="k">Exercise</span>
-      <div class="seg" id="exSeg">
-        <button data-v="standing" class="on">Standing</button>
-        <button data-v="preacher">Preacher</button>
-      </div>
-    </div>
-    <div class="row">
-      <span class="k">Arm</span>
-      <div class="seg" id="armSeg">
-        <button data-v="right" class="on">Right</button>
-        <button data-v="left">Left</button>
-        <button data-v="both">Both</button>
-      </div>
-    </div>
-    <div class="row">
-      <span class="k">Goal <span class="muted" id="goalUnit"></span></span>
-      <div class="stepper">
-        <button class="btn" id="goalMinus" aria-label="Lower goal">−</button>
+<!-- Settings sheet -->
+<div class="scrim" id="scrim" hidden></div>
+<section class="glass sheet" id="sheet" aria-label="Settings" hidden>
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2>Settings</h2>
+    <button class="glass lg pill small" id="sheetDone">Done</button>
+  </div>
+  <div class="group">
+    <div class="r"><span>Goal <span class="soft" id="goalUnit"></span></span>
+      <span class="stepper">
+        <button class="lg" id="goalMinus" aria-label="Lower goal">−</button>
         <b id="goal">12</b>
-        <button class="btn" id="goalPlus" aria-label="Raise goal">+</button>
-      </div>
+        <button class="lg" id="goalPlus" aria-label="Raise goal">+</button>
+      </span>
     </div>
-    <p class="hint" id="setupHint"></p>
-
-    <div class="actions">
-      <button class="btn primary big" id="startBtn" disabled>Start</button>
-      <button class="btn" id="resetBtn">Reset</button>
-      <button class="btn icon" id="flipBtn" aria-label="Switch camera" hidden>
-        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/><path d="M14 9.5l.4 1.6-1.6.3M10 16.5l-.4-1.6 1.6-.3"/></svg>
-      </button>
-      <button class="btn icon" id="soundBtn" aria-label="Sound on" aria-pressed="true">
-        <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>
-      </button>
+    <div class="r"><span>Sound</span>
+      <button class="toggle" id="soundBtn" role="switch" aria-checked="true" aria-label="Sound"></button>
     </div>
-  </section>
-
-  <!-- Session -->
-  <section class="card" id="setsCard" hidden>
-    <h2>This session</h2>
-    <div class="rows" id="sets"></div>
-  </section>
-
-  <!-- Looks -->
-  <section class="card">
-    <div class="row">
-      <span class="k">Looks</span>
-      <div class="seg" id="themeSeg">
+    <div class="r"><span>Looks</span>
+      <div class="seg mini" id="themeSeg">
+        <span class="thumb"></span>
         <button data-v="auto">Auto</button>
         <button data-v="light">Light</button>
         <button data-v="dark">Dark</button>
       </div>
     </div>
-  </section>
+  </div>
+
+  <h3 id="setsTitle" hidden>This session</h3>
+  <div class="group" id="sets" hidden></div>
 
   <p class="fine">Runs fully on your device with MediaPipe. Your video is never uploaded.</p>
-  <footer class="fine">
-    by Narz Angelo Alcaide ·
+  <p class="fine">by Narz Angelo Alcaide · v1 with Sebastian Lee C. Pizarra ·
     <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter">GitHub</a> ·
-    <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/blob/main/README-v1.md">v1</a>
-  </footer>
-</div>
+    <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/blob/main/README-v1.md">v1</a></p>
+</section>
 
-<!-- Set done pop up -->
-<div class="pop-wrap" id="done" hidden>
-  <div class="pop" role="dialog" aria-labelledby="doneTitle">
-    <h3 id="doneTitle">Set complete</h3>
-    <p id="doneSub"></p>
-    <button class="btn primary" id="nextBtn">Next set</button>
-  </div>
+<!-- Set done -->
+<div class="scrim" id="doneScrim" hidden></div>
+<div class="glass pop" id="done" role="dialog" aria-labelledby="doneTitle" hidden>
+  <h3 id="doneTitle">Set complete</h3>
+  <p id="doneSub"></p>
+  <button class="glass lg pill primary" id="nextBtn">Next set</button>
 </div>
 
 <script type="module" src="app.js"></script>

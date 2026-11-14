@@ -13,34 +13,39 @@ const $ = (id) => document.getElementById(id);
 const el = Object.fromEntries(
   [
     "stage", "video", "canvas", "count", "countMain", "countBoth", "reps", "repsL", "repsR",
-    "goalHud", "goalHud2", "stageChip", "cue", "overlay", "overlayText", "camBtn", "fileInput",
-    "fileInput2", "camBack", "trimCard", "trimLen", "trimStart", "trimEnd", "trimSel", "tStart",
-    "tEnd", "exSeg", "armSeg", "goal", "goalUnit", "goalMinus", "goalPlus", "setupHint",
-    "startBtn", "resetBtn", "flipBtn", "soundBtn", "setsCard", "sets", "themeSeg", "done",
-    "doneTitle", "doneSub", "nextBtn",
+    "goalHud", "goalHud2", "stageChip", "stageText", "cue", "overlay", "overlayText", "camBtn",
+    "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
+    "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
+    "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
+    "soundBtn", "themeSeg", "setsTitle", "sets", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
 const draw = new DrawingUtils(ctx);
 
+const saved = JSON.parse(localStorage.getItem("fc-settings") || "{}");
 const state = {
   landmarker: null,
   source: null, // "camera" | "file"
   stream: null,
   facing: "user",
   running: false,
-  exercise: "standing",
-  arm: "right",
-  goal: 12,
-  sound: true,
+  exercise: saved.exercise || "standing",
+  arm: saved.arm || "right",
+  goal: saved.goal || 12,
+  sound: saved.sound ?? true,
   counters: {},
   lastSeen: { left: 0, right: 0 },
   lastVideoTime: -1,
   trim: { start: 0, end: 0 },
   setNo: 0,
 };
+const save = () =>
+  localStorage.setItem("fc-settings", JSON.stringify({
+    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound,
+  }));
 
-const accent = () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+const ACCENT = "#FF453A";
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -56,7 +61,7 @@ async function loadModel() {
   } catch {
     state.landmarker = await PoseLandmarker.createFromOptions(fileset, opts("CPU"));
   }
-  el.overlayText.textContent = "Set your phone down, step back until your upper body fits, then press Start.";
+  el.overlayText.textContent = "Set your phone down, step back until your upper body fits.";
 }
 
 // ---------- sources ----------
@@ -64,7 +69,7 @@ async function startCamera() {
   stopSource();
   try {
     state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: state.facing, width: { ideal: 1280 }, height: { ideal: 960 } },
+      video: { facingMode: state.facing, width: { ideal: 1280 }, height: { ideal: 1280 } },
       audio: false,
     });
   } catch {
@@ -79,11 +84,11 @@ async function startCamera() {
   state.source = "camera";
   el.stage.classList.toggle("mirror", state.facing === "user");
   el.overlay.hidden = true;
-  el.trimCard.hidden = true;
+  el.trimBar.hidden = true;
   el.startBtn.disabled = false;
-  renderStartLabel();
   const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
-  el.flipBtn.hidden = cams.length < 2;
+  el.flipBtn.disabled = cams.length < 2;
+  render();
 }
 
 function startFile(file) {
@@ -95,7 +100,7 @@ function startFile(file) {
   state.source = "file";
   el.stage.classList.remove("mirror");
   el.overlay.hidden = true;
-  el.flipBtn.hidden = true;
+  el.flipBtn.disabled = true;
   el.startBtn.disabled = true;
   el.video.addEventListener(
     "loadedmetadata",
@@ -105,10 +110,10 @@ function startFile(file) {
       el.trimStart.value = 0;
       el.trimEnd.value = d.toFixed(1);
       state.trim = { start: 0, end: d };
-      el.trimCard.hidden = false;
+      el.trimBar.hidden = false;
       el.startBtn.disabled = false;
       renderTrim();
-      renderStartLabel();
+      render();
       el.video.currentTime = 0.01; // show the first frame with the skeleton
     },
     { once: true },
@@ -177,8 +182,9 @@ function loop() {
     return;
   }
 
-  draw.drawConnectors(pose, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(255,255,255,.6)", lineWidth: 3 });
-  draw.drawLandmarks(pose, { color: "#ffffff", radius: 3 });
+  const lw = Math.max(2, el.canvas.width / 260);
+  draw.drawConnectors(pose, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(255,255,255,.65)", lineWidth: lw });
+  draw.drawLandmarks(pose, { color: "#ffffff", radius: lw * 1.2 });
 
   const now = performance.now();
   for (const side of activeSides()) {
@@ -189,7 +195,7 @@ function loop() {
       continue;
     }
     state.lastSeen[side] = now;
-    highlightArm(pose, side);
+    highlightArm(pose, side, lw);
 
     if (state.running) {
       const r = state.counters[side].update(arm.elbowAngle, arm.drift);
@@ -206,31 +212,36 @@ function activeSides() {
   return state.arm === "both" ? ["left", "right"] : [state.arm];
 }
 
-function highlightArm(pose, side) {
+function highlightArm(pose, side, lw) {
   const ids = LM[side];
   draw.drawConnectors(pose, [
     { start: ids.shoulder, end: ids.elbow },
     { start: ids.elbow, end: ids.wrist },
-  ], { color: accent(), lineWidth: 7 });
+  ], { color: ACCENT, lineWidth: lw * 2.6 });
 }
 
+// Angle label: a small dark glass pill next to the elbow.
 function labelAngle(p, angle) {
   const x = p.x * el.canvas.width;
   const y = p.y * el.canvas.height;
-  const size = Math.round(el.canvas.width / 20);
+  const size = Math.round(el.canvas.width / 22);
   ctx.save();
   ctx.translate(x, y);
   if (el.stage.classList.contains("mirror")) ctx.scale(-1, 1);
   ctx.font = `600 ${size}px -apple-system, system-ui, sans-serif`;
   const text = `${Math.round(angle)}°`;
   const w = ctx.measureText(text).width;
-  const pad = size * 0.35;
-  ctx.fillStyle = "rgba(28,28,30,.7)";
+  const pad = size * 0.45;
+  const bx = size * 0.5, by = -size * 1.3, bw = w + pad * 2, bh = size * 1.45;
+  ctx.fillStyle = "rgba(30,30,32,.62)";
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  ctx.lineWidth = Math.max(1, size / 22);
   ctx.beginPath();
-  ctx.roundRect(size * 0.4, -size * 1.2, w + pad * 2, size * 1.35, size * 0.6);
+  ctx.roundRect(bx, by, bw, bh, bh / 2);
   ctx.fill();
+  ctx.stroke();
   ctx.fillStyle = "#fff";
-  ctx.fillText(text, size * 0.4 + pad, -size * 0.18);
+  ctx.fillText(text, bx + pad, by + bh * 0.72);
   ctx.restore();
 }
 
@@ -276,24 +287,25 @@ function finishSet(reason) {
     const label = state.arm === "both"
       ? `L ${state.counters.left.reps} · R ${state.counters.right.reps}`
       : `${total} reps`;
-    const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${state.arm === "both" ? "both" : state.arm}`;
+    const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${state.arm}`;
+    const strict = strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : "";
     const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `<span><b>Set ${state.setNo}</b> <span class="muted">${what}</span></span>
-      <span class="v">${label}${strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : ""}</span>`;
+    row.className = "r";
+    row.innerHTML = `<span>Set ${state.setNo} <span class="soft">${what}</span></span><span class="v">${label}${strict}</span>`;
     el.sets.append(row);
-    el.setsCard.hidden = false;
+    el.sets.hidden = false;
+    el.setsTitle.hidden = false;
 
     if (reason !== "stopped") {
       el.doneTitle.textContent = reason === "goal" ? "Set complete" : "End of clip";
-      el.doneSub.textContent = `${label}${strictCheck ? ` · ${clean}/${total} strict` : ""}`;
-      el.done.hidden = false;
+      el.doneSub.innerHTML = `${label}${strict}`;
+      showDone(true);
       beep(1320, 0.25);
     }
   } else if (reason === "video") {
     el.doneTitle.textContent = "No reps found";
     el.doneSub.textContent = "Try trimming to just the set, or pick the other arm.";
-    el.done.hidden = false;
+    showDone(true);
   }
   setStageChip(null);
   render();
@@ -317,35 +329,32 @@ function render() {
   el.goalHud.textContent = state.goal;
   el.goalHud2.textContent = state.goal;
   el.goalUnit.textContent = both ? "per arm" : "";
-  el.setupHint.textContent = [
-    state.exercise === "preacher"
-      ? "Preacher: elbow forward is fine, so there's no swing check."
-      : "Standing: reps where the elbow swings forward still count, but not as strict.",
-    both ? "Both: each arm counts on its own, so alternating curls work too." : "",
-  ].join(" ");
-  renderStartLabel();
-}
-
-function renderStartLabel() {
-  if (state.running) {
-    el.startBtn.textContent = "Stop";
-  } else {
-    el.startBtn.textContent = state.source === "file" ? "Count reps in clip" : "Start";
-  }
+  el.setupHint.textContent = state.running ? "" : [
+    state.exercise === "preacher" ? "Preacher: elbow forward is fine." : "Standing: keep your elbows by your sides.",
+    both ? `Each arm counts to ${state.goal}, alternating works.` : "",
+  ].join(" ").trim();
+  const label = state.running ? "Stop" : state.source === "file" ? "Count reps" : "Start";
+  el.startLabel.textContent = label;
+  el.startBtn.classList.toggle("running", state.running);
+  el.startBtn.classList.toggle("long", label.length > 5);
+  el.soundBtn.setAttribute("aria-checked", state.sound);
+  seg(el.exSeg, state.exercise);
+  seg(el.armSeg, state.arm);
 }
 
 function setStageChip(stage) {
-  el.stageChip.textContent =
+  el.stageText.textContent =
     stage === "up" ? "Up" : stage === "down" ? "Down" : state.running ? "Extend fully" : "Ready";
-  el.stageChip.className = `chip glass ${stage ?? ""}`;
+  el.stageChip.className = `glass chip ${stage ?? ""}`;
 }
 
 let cueTimer;
 function showCue(text) {
+  if (!el.cue.hidden && el.cue.textContent === text) return;
   el.cue.textContent = text;
   el.cue.hidden = false;
   clearTimeout(cueTimer);
-  cueTimer = setTimeout(() => (el.cue.hidden = true), 2000);
+  cueTimer = setTimeout(() => (el.cue.hidden = true), 2200);
 }
 
 let audio;
@@ -362,8 +371,20 @@ function beep(freq, dur = 0.08) {
   o.stop(audio.currentTime + dur);
 }
 
+// Segmented control with a sliding glass thumb.
 function seg(node, value) {
-  for (const b of node.children) b.classList.toggle("on", b.dataset.v === value);
+  let on;
+  for (const b of node.querySelectorAll("button")) {
+    const is = b.dataset.v === value;
+    b.classList.toggle("on", is);
+    b.setAttribute("aria-checked", is);
+    if (is) on = b;
+  }
+  const thumb = node.querySelector(".thumb");
+  if (on && thumb && on.offsetWidth) {
+    thumb.style.left = `${on.offsetLeft}px`;
+    thumb.style.width = `${on.offsetWidth}px`;
+  }
 }
 
 function setTheme(v) {
@@ -375,6 +396,40 @@ function setTheme(v) {
     localStorage.setItem("fc-theme", v);
   }
   seg(el.themeSeg, v);
+}
+
+function openSheet(open) {
+  el.sheet.hidden = !open;
+  el.scrim.hidden = !open;
+  if (open) seg(el.themeSeg, localStorage.getItem("fc-theme") || "auto");
+}
+
+function showDone(open) {
+  el.done.hidden = !open;
+  el.doneScrim.hidden = !open;
+}
+
+// Liquid glass: a light that follows the pointer, and a squish on press.
+function wireGlass() {
+  document.addEventListener("pointermove", (e) => {
+    const t = e.target.closest?.(".lg, .seg");
+    if (!t) return;
+    const r = t.getBoundingClientRect();
+    t.style.setProperty("--x", `${e.clientX - r.left}px`);
+    t.style.setProperty("--y", `${e.clientY - r.top}px`);
+  }, { passive: true });
+  document.addEventListener("pointerdown", (e) => {
+    const t = e.target.closest?.(".lg, .seg");
+    if (!t) return;
+    const r = t.getBoundingClientRect();
+    t.style.setProperty("--x", `${e.clientX - r.left}px`);
+    t.style.setProperty("--y", `${e.clientY - r.top}px`);
+    t.classList.add("pressing");
+  });
+  const release = () => document.querySelectorAll(".pressing").forEach((n) => n.classList.remove("pressing"));
+  document.addEventListener("pointerup", release);
+  document.addEventListener("pointercancel", release);
+  document.addEventListener("pointerleave", release);
 }
 
 // ---------- events ----------
@@ -396,7 +451,7 @@ el.startBtn.onclick = () => {
   audio ??= new AudioContext(); // iOS needs a tap before sound works
   if (state.running) return finishSet("stopped");
   resetCounters();
-  el.done.hidden = true;
+  showDone(false);
   state.running = true;
   if (state.source === "file") {
     el.video.currentTime = state.trim.start;
@@ -405,27 +460,22 @@ el.startBtn.onclick = () => {
   setStageChip(null);
   render();
 };
-el.resetBtn.onclick = () => {
-  state.running = false;
-  if (state.source === "file") el.video.pause();
-  resetCounters();
-};
 el.nextBtn.onclick = () => {
-  el.done.hidden = true;
+  showDone(false);
   resetCounters();
 };
-el.goalMinus.onclick = () => { state.goal = Math.max(1, state.goal - 1); render(); };
-el.goalPlus.onclick = () => { state.goal = Math.min(50, state.goal + 1); render(); };
-el.soundBtn.onclick = () => {
-  state.sound = !state.sound;
-  el.soundBtn.setAttribute("aria-pressed", state.sound);
-  el.soundBtn.setAttribute("aria-label", state.sound ? "Sound on" : "Sound off");
-};
+el.doneScrim.onclick = () => showDone(false);
+el.settingsBtn.onclick = () => openSheet(true);
+el.sheetDone.onclick = () => openSheet(false);
+el.scrim.onclick = () => openSheet(false);
+el.goalMinus.onclick = () => { state.goal = Math.max(1, state.goal - 1); save(); if (!state.running) newCounters(); render(); };
+el.goalPlus.onclick = () => { state.goal = Math.min(50, state.goal + 1); save(); if (!state.running) newCounters(); render(); };
+el.soundBtn.onclick = () => { state.sound = !state.sound; save(); render(); };
 el.exSeg.onclick = (e) => {
   const b = e.target.closest("button");
   if (!b) return;
   state.exercise = b.dataset.v;
-  seg(el.exSeg, state.exercise);
+  save();
   if (state.running) finishSet("stopped");
   resetCounters();
 };
@@ -433,7 +483,7 @@ el.armSeg.onclick = (e) => {
   const b = e.target.closest("button");
   if (!b) return;
   state.arm = b.dataset.v;
-  seg(el.armSeg, state.arm);
+  save();
   if (state.running) finishSet("stopped");
   resetCounters();
 };
@@ -441,9 +491,12 @@ el.themeSeg.onclick = (e) => {
   const b = e.target.closest("button");
   if (b) setTheme(b.dataset.v);
 };
-
 el.count.addEventListener("animationend", () => el.count.classList.remove("bump"));
-seg(el.themeSeg, localStorage.getItem("fc-theme") || "auto");
+window.addEventListener("resize", () => { seg(el.exSeg, state.exercise); seg(el.armSeg, state.arm); });
+document.fonts?.ready.then(() => render());
+
+wireGlass();
+el.flipBtn.disabled = true;
 newCounters();
 render();
 loadModel()
