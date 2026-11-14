@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=14";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=15";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -56,7 +56,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 14;
+const BUILD = 15;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -199,15 +199,17 @@ function loop() {
   }
 
   const lw = Math.max(2, el.canvas.width / 260);
-  draw.drawConnectors(pose, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(255,255,255,.65)", lineWidth: lw });
-  draw.drawLandmarks(pose, { color: "#ffffff", radius: lw * 1.2 });
+  // Faint body; the counted arm's shoulder, elbow and wrist get drawn on top, full strength.
+  draw.drawConnectors(pose, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(255,255,255,.22)", lineWidth: lw * 0.8 });
+  draw.drawLandmarks(pose, { color: "rgba(255,255,255,.3)", fillColor: "rgba(255,255,255,.3)", lineWidth: 0, radius: lw * 0.8 });
 
   const now = performance.now();
   // Video time keeps the speed check right even when playback stutters.
   const t = state.source === "file" ? v.currentTime * 1000 : now;
   for (const side of countedSides()) {
     const arm = readArm(pose, side);
-    const shown = state.arm !== "auto" || side === state.autoArm;
+    // Auto and Both count both arms, so both get highlighted.
+    const shown = true;
     if (!arm.ok) {
       if (state.running && shown && now - state.lastSeen[side] > 1200)
         showCue(arm.why === "offframe"
@@ -268,7 +270,19 @@ function highlightArm(pose, side, lw) {
   draw.drawConnectors(pose, [
     { start: ids.shoulder, end: ids.elbow },
     { start: ids.elbow, end: ids.wrist },
-  ], { color: ACCENT, lineWidth: lw * 2.6 });
+  ], { color: ACCENT, lineWidth: lw * 2.4 });
+  // The three joints the counter reads, drawn like the app icon: solid white dots.
+  const r = lw * 2.8;
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  ctx.shadowColor = "rgba(0,0,0,.35)";
+  ctx.shadowBlur = r;
+  for (const i of [ids.shoulder, ids.elbow, ids.wrist]) {
+    ctx.beginPath();
+    ctx.arc(pose[i].x * el.canvas.width, pose[i].y * el.canvas.height, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // Angle label: a small dark glass pill next to the elbow.
