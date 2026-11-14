@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -76,7 +76,10 @@
     <div class="glass trimbar" id="trimBar" hidden>
       <div class="trim-head">
         <span><b>Trim</b> <span class="soft" id="trimLen"></span></span>
-        <button class="glass lg pill small" id="camBack"><svg><use href="#i-camera"/></svg>Camera</button>
+        <span class="trim-actions">
+          <button class="glass lg pill small" id="mirrorBtn" aria-pressed="true">Mirror</button>
+          <button class="glass lg pill small" id="camBack"><svg><use href="#i-camera"/></svg>Camera</button>
+        </span>
       </div>
       <div class="trim">
         <div class="trim-track"><div class="trim-sel" id="trimSel"></div></div>
@@ -169,6 +172,6 @@
   <button class="glass lg pill primary" id="nextBtn">Next set</button>
 </div>
 
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=10"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=9";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=10";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" is a little heavier than "lite" but holds the joints much steadier.
@@ -18,7 +18,7 @@ const el = Object.fromEntries(
     "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
-    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn",
+    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -35,6 +35,8 @@ const state = {
   arm: saved.arm || "auto",
   autoArm: "right",
   fit: saved.fit ?? true,
+  // Front-camera clips play un-mirrored, so they look flipped next to what you saw while recording.
+  mirrorFile: saved.mirrorFile ?? true,
   goal: saved.goal || 12,
   sound: saved.sound ?? true,
   counters: {},
@@ -45,12 +47,12 @@ const state = {
 };
 const save = () =>
   localStorage.setItem("fc-settings", JSON.stringify({
-    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound, fit: state.fit,
+    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound, fit: state.fit, mirrorFile: state.mirrorFile,
   }));
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 9;
+const BUILD = 10;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -103,7 +105,7 @@ function startFile(file) {
   el.video.src = URL.createObjectURL(file);
   el.video.load();
   state.source = "file";
-  el.stage.classList.remove("mirror");
+  el.stage.classList.toggle("mirror", state.mirrorFile);
   el.overlay.hidden = true;
   el.flipBtn.disabled = true;
   el.startBtn.disabled = true;
@@ -369,6 +371,8 @@ function resetCounters() {
 function render() {
   el.stage.classList.toggle("fit", state.fit);
   el.fitBtn.textContent = state.fit ? "Fit" : "Fill";
+  el.mirrorBtn.setAttribute("aria-pressed", state.mirrorFile);
+  el.mirrorBtn.classList.toggle("on", state.mirrorFile);
   const both = state.arm === "both" || state.arm === "auto";
   el.countMain.hidden = both;
   el.countBoth.hidden = !both;
@@ -591,6 +595,12 @@ el.logsBtn.onclick = () => openLogs(true);
 el.logsDone.onclick = () => openLogs(false);
 el.logsScrim.onclick = () => openLogs(false);
 el.fitBtn.onclick = () => { state.fit = !state.fit; save(); render(); };
+el.mirrorBtn.onclick = () => {
+  state.mirrorFile = !state.mirrorFile;
+  save();
+  if (state.source === "file") el.stage.classList.toggle("mirror", state.mirrorFile);
+  render();
+};
 el.sheetDone.onclick = () => openSheet(false);
 el.scrim.onclick = () => openSheet(false);
 el.goalMinus.onclick = () => { state.goal = Math.max(1, state.goal - 1); save(); if (!state.running) newCounters(); render(); };
