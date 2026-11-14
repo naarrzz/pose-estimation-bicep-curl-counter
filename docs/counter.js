@@ -8,9 +8,12 @@ export const LM = {
 
 // Curl styles. Preacher / elbow-forward curls skip the swing check,
 // and count a slightly shorter stretch since the pad stops full lockout.
+// relDown / relUp: when the arm points toward the camera, a straight arm can look like 140°
+// and a curled one like 70°. So a big enough swing (minRange) also counts, as long as the
+// extended end is past relDown and the curled end is under relUp.
 export const EXERCISES = {
-  standing: { downAngle: 160, upAngle: 50, maxDrift: 45 },
-  preacher: { downAngle: 150, upAngle: 55, maxDrift: null },
+  standing: { downAngle: 160, upAngle: 50, relDown: 130, relUp: 75, minRange: 70, maxDrift: 45 },
+  preacher: { downAngle: 150, upAngle: 55, relDown: 115, relUp: 80, minRange: 70, maxDrift: null },
 };
 
 // Angle at b (degrees, 0–180) between a-b and c-b. Same math as v1.
@@ -56,12 +59,15 @@ export function readArm(landmarks, side, { minVisibility = 0.65, margin = 0.02 }
 export function createRepCounter({
   downAngle = 160,
   upAngle = 50,
+  relDown = 181, // off unless set
+  relUp = -1,
+  minRange = 70,
   maxDrift = 45,
   smoothing = 0.5,
   cap = Infinity,
-  maxJump = 70,
+  maxJump = 100,
   holdFrames = 3,
-  minRepMs = 350,
+  minRepMs = 250,
 } = {}) {
   let stage = null;
   let reps = 0;
@@ -71,6 +77,8 @@ export function createRepCounter({
   let jumpCount = 0;
   let downAt = null; // when the arm last left full extension
   let range = { min: 180, max: 0 }; // recent range of motion, for picking the working arm
+  let valley = Infinity; // lowest angle since the last rep (the curled end)
+  let peak = -Infinity; // highest angle since the arm went "down" (the extended end)
 
   return {
     // t: timestamp in ms (optional; without it the speed check is skipped)
@@ -85,12 +93,22 @@ export function createRepCounter({
       range = { min: Math.min(range.min, smooth), max: Math.max(range.max, smooth) };
       if (drift !== null) peakDrift = Math.max(peakDrift, drift);
 
+      valley = Math.min(valley, smooth);
+      if (smooth >= peak - 8) downAt = t; // time of the fullest stretch, for the speed check
+      peak = Math.max(peak, smooth);
+      // At the very start there's no curled end to measure from, so a clearly straight-ish arm starts it.
+      const extended = smooth > downAngle || (smooth >= relDown && smooth - valley >= minRange)
+        || (stage === null && smooth >= relDown + 15);
+      const curled = smooth < upAngle || (smooth <= relUp && peak - smooth >= minRange);
+
       let rep = null;
-      if (smooth > downAngle) {
-        if (stage !== "down") peakDrift = drift ?? 0;
+      if (extended && stage !== "down") {
+        peakDrift = drift ?? 0;
         stage = "down";
+        peak = smooth;
         downAt = t;
-      } else if (smooth < upAngle && stage === "down" && reps < cap) {
+      } else if (curled && stage === "down" && reps < cap) {
+        valley = smooth;
         const tooFast = t !== null && downAt !== null && t - downAt < minRepMs;
         stage = "up";
         if (!tooFast) {

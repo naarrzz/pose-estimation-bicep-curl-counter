@@ -92,3 +92,18 @@ test("takeRange reports how much an arm moved", () => {
   feed(c, [170, 171, 169]);
   assert.ok(c.takeRange() < 10);
 });
+
+test("arm pointing at the camera: a big swing still counts (preacher)", () => {
+  // Straight arm reads ~140 and curled ~40, never past 150: seen in a seated preacher clip.
+  const c = createRepCounter(EXERCISES.preacher);
+  const t = (() => { let n = 0; return () => (n += 66); })();
+  const go = (angles) => angles.forEach((a) => c.update(a, null, t()));
+  for (let i = 0; i < 3; i++) go([140, 142, 141, 135, 115, 90, 65, 45, 40, 40, 60, 95, 125, 140, 142, 141]);
+  assert.equal(c.reps, 3);
+});
+
+test("small wiggles don't count even with the relative rule", () => {
+  const c = createRepCounter(EXERCISES.preacher);
+  feed(c, [140, 140, 120, 100, 90, 100, 120, 140, 140, 120, 95, 90, 110, 140]);
+  assert.equal(c.reps, 0);
+});

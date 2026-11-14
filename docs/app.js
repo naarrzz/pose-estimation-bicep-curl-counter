@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=6";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=7";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" is a little heavier than "lite" but holds the joints much steadier.
@@ -223,18 +223,17 @@ function countedSides() {
 }
 // Arms whose reps make up the set.
 function activeSides() {
-  if (state.arm === "auto") return [state.autoArm];
+  // Auto counts any arm that curls, so a switch to the other arm keeps counting.
   return countedSides();
 }
 
-// Auto: the working arm is the one with more reps; on a tie, the one that moved more lately.
+// Auto: highlight the arm that moved more lately (both arms still count).
 function pickAutoArm() {
   if (state.arm !== "auto") return;
   const { left, right } = state.counters;
   const moved = { left: left.takeRange(), right: right.takeRange() };
   let pick = state.autoArm;
-  if (left.reps !== right.reps) pick = left.reps > right.reps ? "left" : "right";
-  else if (Math.abs(moved.left - moved.right) > 25) pick = moved.left > moved.right ? "left" : "right";
+  if (Math.abs(moved.left - moved.right) > 25) pick = moved.left > moved.right ? "left" : "right";
   if (pick !== state.autoArm) {
     state.autoArm = pick;
     render();
@@ -298,14 +297,14 @@ function newCounters() {
 function progress() {
   const { left, right } = state.counters;
   if (state.arm === "both") return Math.min(left.reps, right.reps);
-  if (state.arm === "auto") return Math.max(left.reps, right.reps);
+  if (state.arm === "auto") return left.reps + right.reps;
   return state.counters[state.arm].reps;
 }
 const totalReps = () => activeSides().reduce((n, s) => n + state.counters[s].reps, 0);
 const cleanReps = () => activeSides().reduce((n, s) => n + state.counters[s].clean, 0);
 
 function onRep(rep, side) {
-  if (state.arm === "auto" && state.counters[side].reps >= state.counters[state.autoArm].reps) state.autoArm = side;
+  if (state.arm === "auto") state.autoArm = side;
   render();
   el.count.classList.remove("bump");
   void el.count.offsetWidth;
@@ -326,10 +325,13 @@ function finishSet(reason) {
   if (total > 0) {
     state.setNo += 1;
     const clean = cleanReps();
+    const { left, right } = state.counters;
     const label = state.arm === "both"
-      ? `L ${state.counters.left.reps} · R ${state.counters.right.reps}`
-      : `${total} reps`;
-    const armName = state.arm === "auto" ? `${state.autoArm} (auto)` : state.arm;
+      ? `L ${left.reps} · R ${right.reps}`
+      : state.arm === "auto" && left.reps && right.reps
+        ? `${total} reps (L ${left.reps} · R ${right.reps})`
+        : `${total} reps`;
+    const armName = state.arm === "auto" ? "auto" : state.arm;
     const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${armName}`;
     const strict = strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : "";
     const row = document.createElement("div");
