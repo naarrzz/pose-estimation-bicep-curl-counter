@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flex & Count mark: skeleton f with a squared c whose ends are joints. Same geometry as design/fc-logo-final.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="19.5" android:translateY="14.25" android:scaleX="0.75" android:scaleY="0.75">
+        <path android:pathData="M42,82 L42,38 M26,52 L66,52"
+            android:strokeColor="#FFFFFF" android:strokeWidth="3.6" android:strokeLineCap="round" />
+        <path android:pathData="M66,24 L52,24 A10,10 0 0,0 42,34 L42,42 A10,10 0 0,0 52,52 L66,52"
+            android:strokeColor="#FFFFFF" android:strokeWidth="9" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M35.8,38 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 M59.8,24 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 M59.8,52 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 M19.8,52 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0 M35.8,82 a6.2,6.2 0 1,0 12.4,0 a6.2,6.2 0 1,0 -12.4,0" android:fillColor="#FFFFFF" />
+    </group>
+</vector>
