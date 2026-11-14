@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=16";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=17";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -56,7 +56,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 16;
+const BUILD = 17;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------

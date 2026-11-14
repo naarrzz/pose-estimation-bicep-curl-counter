@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
     private var pendingCamera: PermissionRequest? = null
 
     private val askCamera = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val request = pendingCamera ?: return@registerForActivityResult
+        val request = pendingCamera ?: return@registerForActivityResult   // asked at launch: nothing waiting yet
         pendingCamera = null
         if (granted) {
             request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
@@ -68,6 +69,8 @@ class MainActivity : ComponentActivity() {
         // Don't let the screen sleep in the middle of a set.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        // Debug builds can be inspected from chrome://inspect on the Mac.
+        WebView.setWebContentsDebuggingEnabled(applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
         web = findViewById(R.id.web)
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
@@ -77,6 +80,12 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, back)
 
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(START_URL)
+
+        // Ask for the camera up front, so the first tap on "Turn on camera" works straight away
+        // (asking in the middle of the page's camera request left it hanging on first run).
+        if (savedInstanceState == null && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            askCamera.launch(Manifest.permission.CAMERA)
+        }
     }
 
     override fun onResume() {
