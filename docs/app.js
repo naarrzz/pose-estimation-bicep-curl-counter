@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=8";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=9";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" is a little heavier than "lite" but holds the joints much steadier.
@@ -18,7 +18,7 @@ const el = Object.fromEntries(
     "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
-    "soundBtn", "themeSeg", "setsTitle", "sets", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn",
+    "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -50,7 +50,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 8;
+const BUILD = 9;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -289,7 +289,8 @@ function labelAngle(p, angle) {
 // ---------- reps ----------
 function newCounters() {
   const cfg = EXERCISES[state.exercise];
-  const cap = state.arm === "both" ? state.goal : Infinity;
+  const perSide = state.arm === "both" || state.arm === "auto";
+  const cap = perSide ? state.goal : Infinity;
   state.counters = {
     left: createRepCounter({ ...cfg, cap }),
     right: createRepCounter({ ...cfg, cap }),
@@ -298,8 +299,8 @@ function newCounters() {
 
 function progress() {
   const { left, right } = state.counters;
-  if (state.arm === "both") return Math.min(left.reps, right.reps);
-  if (state.arm === "auto") return left.reps + right.reps;
+  // Both and Auto: the goal is per side, so the set is done when the slower arm gets there.
+  if (state.arm === "both" || state.arm === "auto") return Math.min(left.reps, right.reps);
   return state.counters[state.arm].reps;
 }
 const totalReps = () => activeSides().reduce((n, s) => n + state.counters[s].reps, 0);
@@ -328,20 +329,20 @@ function finishSet(reason) {
     state.setNo += 1;
     const clean = cleanReps();
     const { left, right } = state.counters;
-    const label = state.arm === "both"
+    const label = state.arm === "both" || state.arm === "auto"
       ? `L ${left.reps} · R ${right.reps}`
-      : state.arm === "auto" && left.reps && right.reps
-        ? `${total} reps (L ${left.reps} · R ${right.reps})`
-        : `${total} reps`;
+      : `${total} reps`;
     const armName = state.arm === "auto" ? "auto" : state.arm;
     const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${armName}`;
     const strict = strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : "";
     const row = document.createElement("div");
     row.className = "r";
     row.innerHTML = `<span>Set ${state.setNo} <span class="soft">${what}</span></span><span class="v">${label}${strict}</span>`;
-    el.sets.append(row);
+    el.sets.prepend(row);
     el.sets.hidden = false;
-    el.setsTitle.hidden = false;
+    el.setsEmpty.hidden = true;
+    el.logsBadge.textContent = state.setNo;
+    el.logsBadge.hidden = false;
 
     if (reason !== "stopped") {
       el.doneTitle.textContent = reason === "goal" ? "Set complete" : "End of clip";
@@ -368,7 +369,7 @@ function resetCounters() {
 function render() {
   el.stage.classList.toggle("fit", state.fit);
   el.fitBtn.textContent = state.fit ? "Fit" : "Fill";
-  const both = state.arm === "both";
+  const both = state.arm === "both" || state.arm === "auto";
   el.countMain.hidden = both;
   el.countBoth.hidden = !both;
   el.reps.textContent = progress();
@@ -380,8 +381,7 @@ function render() {
   el.goalUnit.textContent = both ? "per arm" : "";
   el.setupHint.textContent = state.running ? "" : [
     state.exercise === "preacher" ? "Preacher: elbow forward is fine." : "Standing: keep your elbows by your sides.",
-    both ? `Each arm counts to ${state.goal}, alternating works.` : "",
-    state.arm === "auto" ? "Auto follows whichever arm is curling." : "",
+    both ? `${state.goal} per side, alternating works.` : "",
   ].join(" ").trim();
   const label = state.running ? "Stop" : state.source === "file" ? "Count reps" : "Start";
   el.startLabel.textContent = label;
@@ -586,6 +586,10 @@ el.nextBtn.onclick = () => {
 };
 el.doneScrim.onclick = () => showDone(false);
 el.settingsBtn.onclick = () => openSheet(true);
+const openLogs = (open) => { el.logsSheet.hidden = !open; el.logsScrim.hidden = !open; };
+el.logsBtn.onclick = () => openLogs(true);
+el.logsDone.onclick = () => openLogs(false);
+el.logsScrim.onclick = () => openLogs(false);
 el.fitBtn.onclick = () => { state.fit = !state.fit; save(); render(); };
 el.sheetDone.onclick = () => openSheet(false);
 el.scrim.onclick = () => openSheet(false);
@@ -620,7 +624,8 @@ wireGlass();
 document.getElementById("ver").textContent = `Version 2 · build ${BUILD}`;
 // Fit mode keeps the camera above the controls, so it needs to know how tall they are.
 const controlsH = () => {
-  const h = window.innerHeight - document.querySelector(".controls").getBoundingClientRect().top + 8;
+  // Measured against the stage, which reaches behind Safari's bars on iPhone.
+  const h = el.stage.getBoundingClientRect().bottom - document.querySelector(".controls").getBoundingClientRect().top + 8;
   document.documentElement.style.setProperty("--controls-h", `${Math.max(0, Math.round(h))}px`);
 };
 new ResizeObserver(controlsH).observe(document.querySelector(".controls"));
