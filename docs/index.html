@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -28,6 +28,7 @@
 </svg>
 
 <main class="stage" id="stage">
+  <canvas id="backdrop" aria-hidden="true"></canvas>
   <video id="video" playsinline muted></video>
   <canvas id="canvas"></canvas>
 
@@ -47,7 +48,10 @@
   <!-- Top bar -->
   <header class="topbar">
     <div class="glass logo-pill"><span class="logo">FLEX<span>&amp;</span>COUNT</span></div>
-    <button class="glass lg round" id="settingsBtn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+    <div class="top-right">
+      <button class="glass lg pill small" id="fitBtn" aria-label="Show the whole camera or fill the screen">Fit</button>
+      <button class="glass lg round" id="settingsBtn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+    </div>
   </header>
 
   <!-- Live readout -->
@@ -86,7 +90,8 @@
     </div>
     <div class="glass seg" id="armSeg" role="radiogroup" aria-label="Arm">
       <span class="thumb"></span>
-      <button data-v="right" class="on">Right</button>
+      <button data-v="auto" class="on">Auto</button>
+      <button data-v="right">Right</button>
       <button data-v="left">Left</button>
       <button data-v="both">Both</button>
     </div>
@@ -148,6 +153,6 @@
   <button class="glass lg pill primary" id="nextBtn">Next set</button>
 </div>
 
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>

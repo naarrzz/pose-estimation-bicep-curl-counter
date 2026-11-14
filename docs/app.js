@@ -3,11 +3,12 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=5";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=6";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
+// "full" is a little heavier than "lite" but holds the joints much steadier.
 const MODEL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
 
 const $ = (id) => document.getElementById(id);
 const el = Object.fromEntries(
@@ -17,7 +18,7 @@ const el = Object.fromEntries(
     "fileInput", "fileInput2", "camBack", "trimBar", "trimLen", "trimStart", "trimEnd", "trimSel",
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
-    "soundBtn", "themeSeg", "setsTitle", "sets", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn",
+    "soundBtn", "themeSeg", "setsTitle", "sets", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -31,7 +32,9 @@ const state = {
   facing: "user",
   running: false,
   exercise: saved.exercise || "standing",
-  arm: saved.arm || "right",
+  arm: saved.arm || "auto",
+  autoArm: "right",
+  fit: saved.fit ?? true,
   goal: saved.goal || 12,
   sound: saved.sound ?? true,
   counters: {},
@@ -42,7 +45,7 @@ const state = {
 };
 const save = () =>
   localStorage.setItem("fc-settings", JSON.stringify({
-    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound,
+    exercise: state.exercise, arm: state.arm, goal: state.goal, sound: state.sound, fit: state.fit,
   }));
 
 const ACCENT = "#FF453A";
@@ -174,6 +177,7 @@ function loop() {
     el.canvas.width = v.videoWidth;
     el.canvas.height = v.videoHeight;
   }
+  drawBackdrop(v);
   const result = state.landmarker.detectForVideo(v, performance.now());
   ctx.clearRect(0, 0, el.canvas.width, el.canvas.height);
   const pose = result.landmarks?.[0];
@@ -187,29 +191,65 @@ function loop() {
   draw.drawLandmarks(pose, { color: "#ffffff", radius: lw * 1.2 });
 
   const now = performance.now();
-  for (const side of activeSides()) {
+  // Video time keeps the speed check right even when playback stutters.
+  const t = state.source === "file" ? v.currentTime * 1000 : now;
+  for (const side of countedSides()) {
     const arm = readArm(pose, side);
-    if (!arm) {
-      if (state.running && now - state.lastSeen[side] > 1200)
-        showCue(`Can't see your ${side} arm. Turn a bit so it faces the camera.`);
+    const shown = state.arm !== "auto" || side === state.autoArm;
+    if (!arm.ok) {
+      if (state.running && shown && now - state.lastSeen[side] > 1200)
+        showCue(arm.why === "offframe"
+          ? `Your ${side} arm is cut off. Move back so your whole arm fits.`
+          : `Can't see your ${side} arm. Turn a bit so it faces the camera.`);
       continue;
     }
     state.lastSeen[side] = now;
-    highlightArm(pose, side, lw);
+    if (shown) highlightArm(pose, side, lw);
 
     if (state.running) {
-      const r = state.counters[side].update(arm.elbowAngle, arm.drift);
-      if (state.arm !== "both") setStageChip(r.stage);
-      if (r.rep) onRep(r.rep);
-      labelAngle(arm.elbow, r.angle);
-    } else {
+      const r = state.counters[side].update(arm.elbowAngle, arm.drift, t);
+      if (state.arm !== "both" && shown) setStageChip(r.stage);
+      if (r.rep) onRep(r.rep, side);
+      if (shown) labelAngle(arm.elbow, r.angle);
+    } else if (shown) {
       labelAngle(arm.elbow, arm.elbowAngle);
     }
   }
 }
 
+// Arms that get a counter: Auto watches both and follows the one that's working.
+function countedSides() {
+  return state.arm === "both" || state.arm === "auto" ? ["left", "right"] : [state.arm];
+}
+// Arms whose reps make up the set.
 function activeSides() {
-  return state.arm === "both" ? ["left", "right"] : [state.arm];
+  if (state.arm === "auto") return [state.autoArm];
+  return countedSides();
+}
+
+// Auto: the working arm is the one with more reps; on a tie, the one that moved more lately.
+function pickAutoArm() {
+  if (state.arm !== "auto") return;
+  const { left, right } = state.counters;
+  const moved = { left: left.takeRange(), right: right.takeRange() };
+  let pick = state.autoArm;
+  if (left.reps !== right.reps) pick = left.reps > right.reps ? "left" : "right";
+  else if (Math.abs(moved.left - moved.right) > 25) pick = moved.left > moved.right ? "left" : "right";
+  if (pick !== state.autoArm) {
+    state.autoArm = pick;
+    render();
+  }
+}
+setInterval(pickAutoArm, 900);
+
+// Fills the space around a "fit" camera with a soft, blurred copy of it.
+const bgCtx = document.getElementById("backdrop").getContext("2d");
+function drawBackdrop(v) {
+  if (!state.fit) return;
+  const c = bgCtx.canvas;
+  const w = 48, h = Math.round((48 * v.videoHeight) / v.videoWidth) || 64;
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  bgCtx.drawImage(v, 0, 0, w, h);
 }
 
 function highlightArm(pose, side, lw) {
@@ -258,12 +298,14 @@ function newCounters() {
 function progress() {
   const { left, right } = state.counters;
   if (state.arm === "both") return Math.min(left.reps, right.reps);
+  if (state.arm === "auto") return Math.max(left.reps, right.reps);
   return state.counters[state.arm].reps;
 }
 const totalReps = () => activeSides().reduce((n, s) => n + state.counters[s].reps, 0);
 const cleanReps = () => activeSides().reduce((n, s) => n + state.counters[s].clean, 0);
 
-function onRep(rep) {
+function onRep(rep, side) {
+  if (state.arm === "auto" && state.counters[side].reps >= state.counters[state.autoArm].reps) state.autoArm = side;
   render();
   el.count.classList.remove("bump");
   void el.count.offsetWidth;
@@ -287,7 +329,8 @@ function finishSet(reason) {
     const label = state.arm === "both"
       ? `L ${state.counters.left.reps} · R ${state.counters.right.reps}`
       : `${total} reps`;
-    const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${state.arm}`;
+    const armName = state.arm === "auto" ? `${state.autoArm} (auto)` : state.arm;
+    const what = `${state.exercise === "preacher" ? "Preacher" : "Standing"} · ${armName}`;
     const strict = strictCheck ? ` · <span class="${clean === total ? "ok" : "meh"}">${clean}/${total} strict</span>` : "";
     const row = document.createElement("div");
     row.className = "r";
@@ -304,7 +347,7 @@ function finishSet(reason) {
     }
   } else if (reason === "video") {
     el.doneTitle.textContent = "No reps found";
-    el.doneSub.textContent = "Try trimming to just the set, or pick the other arm.";
+    el.doneSub.textContent = "Try trimming to just the set, and make sure your whole arm stays in the frame.";
     showDone(true);
   }
   setStageChip(null);
@@ -319,6 +362,8 @@ function resetCounters() {
 
 // ---------- UI ----------
 function render() {
+  el.stage.classList.toggle("fit", state.fit);
+  el.fitBtn.textContent = state.fit ? "Fit" : "Fill";
   const both = state.arm === "both";
   el.countMain.hidden = both;
   el.countBoth.hidden = !both;
@@ -332,6 +377,7 @@ function render() {
   el.setupHint.textContent = state.running ? "" : [
     state.exercise === "preacher" ? "Preacher: elbow forward is fine." : "Standing: keep your elbows by your sides.",
     both ? `Each arm counts to ${state.goal}, alternating works.` : "",
+    state.arm === "auto" ? "Auto follows whichever arm is curling." : "",
   ].join(" ").trim();
   const label = state.running ? "Stop" : state.source === "file" ? "Count reps" : "Start";
   el.startLabel.textContent = label;
@@ -343,8 +389,9 @@ function render() {
 }
 
 function setStageChip(stage) {
-  el.stageText.textContent =
-    stage === "up" ? "Up" : stage === "down" ? "Down" : state.running ? "Extend fully" : "Ready";
+  const word = stage === "up" ? "Up" : stage === "down" ? "Down" : state.running ? "Extend fully" : "Ready";
+  el.stageText.textContent = state.arm === "auto" && (state.running || stage)
+    ? `${word} · ${state.autoArm === "left" ? "Left" : "Right"}` : word;
   el.stageChip.className = `glass chip ${stage ?? ""}`;
 }
 
@@ -535,6 +582,7 @@ el.nextBtn.onclick = () => {
 };
 el.doneScrim.onclick = () => showDone(false);
 el.settingsBtn.onclick = () => openSheet(true);
+el.fitBtn.onclick = () => { state.fit = !state.fit; save(); render(); };
 el.sheetDone.onclick = () => openSheet(false);
 el.scrim.onclick = () => openSheet(false);
 el.goalMinus.onclick = () => { state.goal = Math.max(1, state.goal - 1); save(); if (!state.running) newCounters(); render(); };
@@ -565,6 +613,13 @@ window.addEventListener("resize", () => { seg(el.exSeg, state.exercise); seg(el.
 document.fonts?.ready.then(() => render());
 
 wireGlass();
+// Fit mode keeps the camera above the controls, so it needs to know how tall they are.
+const controlsH = () => {
+  const h = window.innerHeight - document.querySelector(".controls").getBoundingClientRect().top + 8;
+  document.documentElement.style.setProperty("--controls-h", `${Math.max(0, Math.round(h))}px`);
+};
+new ResizeObserver(controlsH).observe(document.querySelector(".controls"));
+window.addEventListener("resize", controlsH);
 [el.exSeg, el.armSeg, el.themeSeg].forEach(wireSegDrag);
 el.flipBtn.disabled = true;
 newCounters();

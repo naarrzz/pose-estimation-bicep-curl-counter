@@ -51,10 +51,44 @@ test("alternating: an arm stops counting at its goal", () => {
   assert.equal(c.reps, 2);
 });
 
-test("readArm skips arms the model can't see", () => {
+test("readArm: low confidence is hidden, off-screen joints don't count", () => {
   const lm = [];
-  lm[12] = P(0, 0); lm[14] = P(0, 1); lm[16] = P(0, 2, 0.1); lm[24] = P(0, 3);
-  assert.equal(readArm(lm, "right"), null);
-  lm[16] = P(1, 1);
-  assert.equal(Math.round(readArm(lm, "right").elbowAngle), 90);
+  lm[12] = P(0.5, 0.3); lm[14] = P(0.5, 0.5); lm[16] = P(0.5, 0.7, 0.1); lm[24] = P(0.5, 0.8);
+  assert.equal(readArm(lm, "right").why, "hidden");
+  lm[16] = P(0.5, 1.08); // wrist below the bottom edge
+  assert.equal(readArm(lm, "right").why, "offframe");
+  lm[16] = P(0.7, 0.5);
+  const arm = readArm(lm, "right");
+  assert.ok(arm.ok);
+  assert.equal(Math.round(arm.elbowAngle), 90);
+});
+
+test("glitch guard: a one-frame jump doesn't make a rep", () => {
+  const c = createRepCounter();
+  feed(c, [170, 170, 170]);
+  feed(c, [20, 170, 170, 175]); // 179 -> 6 for one frame, like a joint guessed off-screen
+  assert.equal(c.reps, 0);
+});
+
+test("glitch guard: a jump that holds is real", () => {
+  const c = createRepCounter();
+  feed(c, [170, 170, 30, 30, 30, 30]);
+  assert.equal(c.reps, 1);
+});
+
+test("speed check: a 'rep' faster than a real curl is thrown out", () => {
+  const c = createRepCounter();
+  const at = (angles, t0, dt) => angles.map((a, i) => c.update(a, 10, t0 + i * dt));
+  at([170, 170, 120, 80, 40, 30, 30], 0, 30); // ~120 ms from extension to curled
+  assert.equal(c.reps, 0);
+  at([60, 100, 140, 170, 170, 170, 170, 140, 110, 80, 50, 35, 30, 30], 1000, 80); // ~560 ms: a real rep
+  assert.equal(c.reps, 1);
+});
+
+test("takeRange reports how much an arm moved", () => {
+  const c = createRepCounter();
+  feed(c, curl);
+  assert.ok(c.takeRange() > 100);
+  feed(c, [170, 171, 169]);
+  assert.ok(c.takeRange() < 10);
 });

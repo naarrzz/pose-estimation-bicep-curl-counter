@@ -23,16 +23,22 @@ export function calculateAngle(a, b, c) {
 }
 
 const visible = (p, min) => p && (p.visibility === undefined || p.visibility >= min);
+// The model guesses where off-screen joints are. Those guesses jump around, so they don't count.
+const inFrame = (p, m) => p && p.x >= m && p.x <= 1 - m && p.y >= m && p.y <= 1 - m;
 
-// Reads one arm from a pose. Returns null if the arm isn't visible enough.
-export function readArm(landmarks, side, minVisibility = 0.5) {
+// Reads one arm from a pose.
+// Returns { ok: true, elbowAngle, drift, elbow } or { ok: false, why: "hidden" | "offframe" }.
+export function readArm(landmarks, side, { minVisibility = 0.65, margin = 0.02 } = {}) {
   const ids = LM[side];
   const shoulder = landmarks[ids.shoulder];
   const elbow = landmarks[ids.elbow];
   const wrist = landmarks[ids.wrist];
   const hip = landmarks[ids.hip];
-  if (![shoulder, elbow, wrist].every((p) => visible(p, minVisibility))) return null;
+  const joints = [shoulder, elbow, wrist];
+  if (!joints.every((p) => inFrame(p, margin))) return { ok: false, why: "offframe", elbow };
+  if (!joints.every((p) => visible(p, minVisibility))) return { ok: false, why: "hidden", elbow };
   return {
+    ok: true,
     elbowAngle: calculateAngle(shoulder, elbow, wrist),
     // How far the upper arm swings away from the torso (hip-shoulder-elbow).
     drift: visible(hip, minVisibility) ? calculateAngle(hip, shoulder, elbow) : null,
@@ -45,36 +51,62 @@ export function readArm(landmarks, side, minVisibility = 0.5) {
 //  - a rep counts when it then curls past upAngle
 //  - swing: the elbow drifted more than maxDrift during the rep (null = no check)
 //  - cap: stop counting this arm once it reaches the goal (alternating curls)
+//  - glitch guard: a single-frame jump bigger than maxJump is ignored unless it holds,
+//    and a rep faster than minRepMs (down to up) is thrown out. Real curls aren't that fast.
 export function createRepCounter({
   downAngle = 160,
   upAngle = 50,
   maxDrift = 45,
   smoothing = 0.5,
   cap = Infinity,
+  maxJump = 70,
+  holdFrames = 3,
+  minRepMs = 350,
 } = {}) {
   let stage = null;
   let reps = 0;
   let clean = 0;
   let smooth = null;
   let peakDrift = 0;
+  let jumpCount = 0;
+  let downAt = null; // when the arm last left full extension
+  let range = { min: 180, max: 0 }; // recent range of motion, for picking the working arm
 
   return {
-    update(angle, drift = null) {
+    // t: timestamp in ms (optional; without it the speed check is skipped)
+    update(angle, drift = null, t = null) {
+      if (smooth !== null && Math.abs(angle - smooth) > maxJump) {
+        jumpCount += 1;
+        if (jumpCount < holdFrames) return { angle: smooth, stage, reps, clean, rep: null, glitch: true };
+        smooth = angle; // it held, so it's real
+      }
+      jumpCount = 0;
       smooth = smooth === null ? angle : smoothing * angle + (1 - smoothing) * smooth;
+      range = { min: Math.min(range.min, smooth), max: Math.max(range.max, smooth) };
       if (drift !== null) peakDrift = Math.max(peakDrift, drift);
 
       let rep = null;
       if (smooth > downAngle) {
         if (stage !== "down") peakDrift = drift ?? 0;
         stage = "down";
+        downAt = t;
       } else if (smooth < upAngle && stage === "down" && reps < cap) {
+        const tooFast = t !== null && downAt !== null && t - downAt < minRepMs;
         stage = "up";
-        reps += 1;
-        const swing = maxDrift !== null && peakDrift > maxDrift;
-        if (!swing) clean += 1;
-        rep = { n: reps, swing };
+        if (!tooFast) {
+          reps += 1;
+          const swing = maxDrift !== null && peakDrift > maxDrift;
+          if (!swing) clean += 1;
+          rep = { n: reps, swing };
+        }
       }
       return { angle: smooth, stage, reps, clean, rep };
+    },
+    // How much this arm has moved since the last call; resets the window.
+    takeRange() {
+      const r = range.max - range.min;
+      range = { min: 180, max: 0 };
+      return Math.max(0, r);
     },
     get reps() {
       return reps;
