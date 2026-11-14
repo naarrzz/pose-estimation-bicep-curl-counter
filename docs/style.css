@@ -47,7 +47,7 @@
 /* Like Time Log: the page is a hair taller than the screen, so iPhone Safari floats its bars
    over the camera instead of giving them their own strip. */
 html, body { margin: 0; background: var(--page); }
-body { min-height: calc(100vh + 1px); min-height: calc(100lvh + 1px); overflow-x: hidden; }
+body { position: relative; min-height: calc(100vh + 1px); min-height: calc(100lvh + 1px); overflow-x: hidden; }
 body { font: 16px/1.3 var(--font); color: var(--glass-ink); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 button, label { font: inherit; color: inherit; }
 button { border: 0; background: none; cursor: pointer; }
@@ -103,7 +103,9 @@ a { color: inherit; }
 .big-logo { font-size: 38px; margin: 0 0 4px; }
 
 /* ---------- stage ---------- */
-.stage { position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100lvh; overflow: hidden;
+/* In the page flow (not fixed), like Time Log's content, so iPhone Safari lets it run under its bars;
+   a fixed layer stops at the toolbar. The controls stay fixed above it. */
+.stage { position: absolute; top: 0; left: 0; right: 0; height: 100vh; height: 100lvh; overflow: hidden;
   background:
     radial-gradient(40% 30% at 20% 25%, var(--blob1), transparent 70%),
     radial-gradient(45% 35% at 85% 60%, var(--blob2), transparent 70%),
