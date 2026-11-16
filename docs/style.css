@@ -299,3 +299,22 @@ body.focus #logsBtn, body.focus #flipBtn, body.focus .top-right { opacity: 0; po
 .pop-actions .pill { flex: 1; }
 #confirm { z-index: 12; }
 #confirmScrim { z-index: 11; }
+
+/* ---------- get the app ---------- */
+.get-link { display: inline-flex; align-items: center; gap: 6px; color: var(--glass-soft); font-size: 13px; font-weight: 600; padding: 4px 8px; }
+.get-link svg { width: 16px; height: 16px; }
+.get-sub { margin: -4px 4px 12px; font-size: 14px; }
+.get-opt { display: flex; align-items: center; gap: 14px; width: 100%; border-radius: 24px; padding: 14px 16px; margin-bottom: 10px; text-align: left; color: inherit; text-decoration: none; }
+.get-opt > svg { width: 30px; height: 30px; flex: none; }
+.get-opt span { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.get-opt b { font: 600 17px var(--display); }
+.get-opt small { color: var(--glass-soft); font-size: 13px; }
+.get-opt .here { font-style: normal; font-size: 11px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--accent) 88%, transparent); border-radius: 99px; padding: 4px 9px; }
+.steps { list-style: none; counter-reset: s; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.steps li { counter-increment: s; display: flex; align-items: center; gap: 12px; background: var(--group); border-radius: 20px; padding: 10px 14px 10px 10px; font-size: 15px; line-height: 1.35; }
+.steps li::before { content: counter(s); font: 700 13px var(--display); color: var(--glass-soft); width: 14px; text-align: center; flex: none; }
+.steps .ico { flex: none; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: var(--group); }
+.steps .ico svg { width: 20px; height: 20px; }
+.steps .ico.ok { color: var(--good); font-weight: 800; }
+.warn-note { border-radius: 18px; padding: 10px 14px; margin: 0 0 10px; font-size: 14px; line-height: 1.35; }
+#getBack { width: 100%; margin-top: 10px; }

@@ -21,7 +21,7 @@
   <link rel="icon" href="icons/favicon-32.png?v=16" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=16">
   <link rel="manifest" href="manifest.webmanifest?v=16">
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -29,6 +29,13 @@
   <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10l5-3v10l-5-3"/></symbol>
   <symbol id="i-flip" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2"/><path d="M14 9.5l.4 1.6-1.6.3M10 16.5l-.4-1.6 1.6-.3"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3.5v11M8 7.5l4-4 4 4"/><path d="M8.5 10.5H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6.5a2 2 0 0 0-2-2h-1.5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></symbol>
+  <symbol id="i-android" viewBox="0 0 24 24"><path d="M4 17.5a8 8 0 0 1 16 0z"/><path d="M7.5 10.6 5.6 7.6M16.5 10.6l1.9-3"/><circle cx="9" cy="14.2" r=".6"/><circle cx="15" cy="14.2" r=".6"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></symbol>
 </svg>
 
@@ -48,6 +55,7 @@
         <input type="file" id="fileInput" accept="video/*" hidden>
       </label>
       <p class="fine">The camera stays on your phone. Nothing is recorded, saved or uploaded.</p>
+      <button class="get-link" id="getLink" hidden><svg><use href="#i-download"/></svg>Get the app</button>
     </div>
   </div>
 
@@ -60,6 +68,7 @@
         <input type="file" id="fileInput2" accept="video/*" hidden>
       </label>
       <button class="glass lg pill small" id="fitBtn" aria-label="Show the whole camera or fill the screen">Fit</button>
+      <button class="glass lg round" id="getBtn" aria-label="Get the app" hidden><svg><use href="#i-download"/></svg></button>
       <button class="glass lg round" id="settingsBtn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
     </div>
   </header>
@@ -164,6 +173,42 @@
     <a href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/blob/main/README-v1.md">v1</a></p>
 </section>
 
+<!-- Get the app sheet -->
+<div class="scrim" id="getScrim" hidden></div>
+<section class="glass sheet" id="getSheet" aria-label="Get the app" hidden>
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2 id="getTitle">Get the app</h2>
+    <button class="glass lg pill small" id="getDone">Done</button>
+  </div>
+  <div id="getPick">
+    <p class="soft get-sub">Free. Opens full screen, no browser bars.</p>
+    <a class="glass lg get-opt" id="getAndroid" href="https://github.com/naarrzz/pose-estimation-bicep-curl-counter/releases/latest/download/FlexAndCount.apk" download>
+      <svg><use href="#i-android"/></svg>
+      <span><b>Android</b><small>Download Flex &amp; Count.apk</small></span>
+      <em class="here" hidden>This phone</em>
+    </a>
+    <button class="glass lg get-opt" id="getIos">
+      <svg><use href="#i-apple"/></svg>
+      <span><b>iPhone</b><small>Add to Home Screen from Safari</small></span>
+      <em class="here" hidden>This phone</em>
+    </button>
+    <p class="fine">Android may ask to allow installs from your browser. That's normal for apps outside the Play Store.</p>
+  </div>
+  <div id="getSteps" hidden>
+    <p class="glass warn-note" id="inAppNote" hidden>You're inside another app's browser. Open this page in <b>Safari</b> first (tap ••• or the compass, then Open in Safari).</p>
+    <ol class="steps">
+      <li><span class="ico"><svg><use href="#i-menu"/></svg></span><span>In Safari, tap the <b>menu button</b> on the left of the address bar.</span></li>
+      <li><span class="ico"><svg><use href="#i-share"/></svg></span><span>Tap <b>Share</b>.</span></li>
+      <li><span class="ico"><svg><use href="#i-more"/></svg></span><span>Tap <b>View More</b>.</span></li>
+      <li><span class="ico"><svg><use href="#i-plus"/></svg></span><span>Tap <b>Add to Home Screen</b>.</span></li>
+      <li><span class="ico ok">✓</span><span>Keep <b>Open as Web App</b> on, then tap <b>Add</b>.</span></li>
+    </ol>
+    <p class="fine">Older iPhones: tap Share at the bottom of Safari, then Add to Home Screen.</p>
+    <button class="glass lg pill" id="getBack">Back</button>
+  </div>
+</section>
+
 <!-- Logs sheet -->
 <div class="scrim" id="logsScrim" hidden></div>
 <section class="glass sheet" id="logsSheet" aria-label="Logs" hidden>
@@ -200,6 +245,6 @@
   <button class="glass lg pill primary" id="nextBtn">Next set</button>
 </div>
 
-<script type="module" src="app.js?v=19"></script>
+<script type="module" src="app.js?v=20"></script>
 </body>
 </html>

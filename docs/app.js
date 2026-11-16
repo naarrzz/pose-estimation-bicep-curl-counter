@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=19";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=20";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -22,6 +22,7 @@ const el = Object.fromEntries(
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
     "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn", "qualitySeg", "logActions", "saveLogs", "clearLogs", "confirm", "confirmScrim", "confirmCancel", "confirmClear",
+    "getBtn", "getLink", "getScrim", "getSheet", "getTitle", "getDone", "getPick", "getSteps", "getIos", "getAndroid", "getBack", "inAppNote",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -56,7 +57,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 19;
+const BUILD = 20;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -706,6 +707,37 @@ el.nextBtn.onclick = () => {
 };
 el.doneScrim.onclick = () => showDone(false);
 el.settingsBtn.onclick = () => openSheet(true);
+
+// Get the app: Android APK or iPhone Add to Home Screen steps.
+// Hidden when it's already the app (home screen web app or the Android shell).
+const ua = navigator.userAgent;
+const isAndroid = /Android/.test(ua);
+const isIos = /iPhone|iPad|iPod/.test(ua) || (!isAndroid && navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isApp = !!window.FlexAndCountAndroid || navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+const inAppBrowser = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|TikTok|musical_ly|Twitter/i.test(ua);
+const showGetSteps = (on) => {
+  el.getPick.hidden = on;
+  el.getSteps.hidden = !on;
+  el.getTitle.textContent = on ? "Add to Home Screen" : "Get the app";
+  el.inAppNote.hidden = !(on && inAppBrowser);
+};
+const openGet = (open) => {
+  el.getSheet.hidden = !open;
+  el.getScrim.hidden = !open;
+  if (open) showGetSteps(false);
+};
+if (!isApp) {
+  el.getBtn.hidden = false;
+  el.getLink.hidden = false;
+  if (isIos) el.getIos.querySelector(".here").hidden = false;
+  if (isAndroid) el.getAndroid.querySelector(".here").hidden = false;
+}
+el.getBtn.onclick = () => openGet(true);
+el.getLink.onclick = () => openGet(true);
+el.getDone.onclick = () => openGet(false);
+el.getScrim.onclick = () => openGet(false);
+el.getIos.onclick = () => showGetSteps(true);
+el.getBack.onclick = () => showGetSteps(false);
 const openLogs = (open) => { el.logsSheet.hidden = !open; el.logsScrim.hidden = !open; };
 el.logsBtn.onclick = () => openLogs(true);
 el.logsDone.onclick = () => openLogs(false);
