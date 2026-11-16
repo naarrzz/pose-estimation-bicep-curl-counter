@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=21";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=22";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -22,7 +22,7 @@ const el = Object.fromEntries(
     "tStart", "tEnd", "setupHint", "exSeg", "armSeg", "startBtn", "startLabel", "flipBtn",
     "settingsBtn", "scrim", "sheet", "sheetDone", "goal", "goalUnit", "goalMinus", "goalPlus",
     "soundBtn", "themeSeg", "sets", "setsEmpty", "logsBtn", "logsBadge", "logsSheet", "logsDone", "logsScrim", "doneScrim", "done", "doneTitle", "doneSub", "nextBtn", "fitBtn", "mirrorBtn", "qualitySeg", "logActions", "saveLogs", "clearLogs", "confirm", "confirmScrim", "confirmCancel", "confirmClear",
-    "getBtn", "getLink", "getScrim", "getSheet", "getTitle", "getDone", "getPick", "getSteps", "getIos", "getAndroid", "getBack", "inAppNote",
+    "getBtn", "getLink", "getSettings", "getScrim", "getSheet", "getTitle", "getDone", "getPick", "getSteps", "getIos", "getAndroid", "getBack", "inAppNote",
   ].map((id) => [id, $(id)]),
 );
 const ctx = el.canvas.getContext("2d");
@@ -57,7 +57,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 21;
+const BUILD = 22;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -729,11 +729,13 @@ const openGet = (open) => {
 if (!isApp) {
   el.getBtn.hidden = false;
   el.getLink.hidden = false;
+  el.getSettings.hidden = false;
   if (isIos) el.getIos.querySelector(".here").hidden = false;
   if (isAndroid) el.getAndroid.querySelector(".here").hidden = false;
 }
 el.getBtn.onclick = () => openGet(true);
 el.getLink.onclick = () => openGet(true);
+el.getSettings.onclick = () => { openSheet(false); openGet(true); };
 el.getDone.onclick = () => openGet(false);
 el.getScrim.onclick = () => openGet(false);
 el.getIos.onclick = () => showGetSteps(true);

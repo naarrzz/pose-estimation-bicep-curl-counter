@@ -318,3 +318,9 @@ body.focus #logsBtn, body.focus #flipBtn, body.focus .top-right { opacity: 0; po
 .steps .ico.ok { color: var(--good); font-weight: 800; }
 .warn-note { border-radius: 18px; padding: 10px 14px; margin: 0 0 10px; font-size: 14px; line-height: 1.35; }
 #getBack { width: 100%; margin-top: 10px; }
+.get-row { width: 100%; margin-bottom: 4px; }
+/* Narrow phones (most Androids are about 360 px): the top bar only fits three round buttons,
+   so the download button moves out; it's still on the start card and in Settings. */
+@media (max-width: 400px) {
+  .top-right #getBtn { display: none; }
+}
