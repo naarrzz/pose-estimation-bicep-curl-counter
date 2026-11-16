@@ -3,7 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
-import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=20";
+import { readArm, createRepCounter, LM, EXERCISES } from "./counter.js?v=21";
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
 // "full" holds the joints steadier; "lite" is about twice as fast, which phones need.
@@ -57,7 +57,7 @@ const save = () =>
 
 const ACCENT = "#FF453A";
 // Bump with the ?v= numbers in index.html on every release; shown in Settings so you can tell a stale copy.
-const BUILD = 20;
+const BUILD = 21;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 // ---------- model ----------
@@ -797,7 +797,7 @@ window.addEventListener("resize", () => { seg(el.exSeg, state.exercise); seg(el.
 document.fonts?.ready.then(() => render());
 
 wireGlass();
-document.getElementById("ver").textContent = `Version 2 · build ${BUILD}`;
+document.getElementById("ver").textContent = `Build ${BUILD}`;
 // Fit mode keeps the camera above the controls, so it needs to know how tall they are.
 const controlsH = () => {
   // Measured against the stage, which reaches behind Safari's bars on iPhone.
