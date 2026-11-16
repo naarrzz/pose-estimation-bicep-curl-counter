@@ -9,7 +9,7 @@ Counts bicep curl reps in real time with pose estimation. v2 runs in the browser
   <a href="https://naarrzz.github.io/pose-estimation-bicep-curl-counter/"><img src="https://img.shields.io/badge/iOS%20%2F%20Web-111111?style=for-the-badge&logo=apple&logoColor=white" alt="Open on iOS or the web"></a>
 </p>
 
-**Try it:** https://naarrzz.github.io/pose-estimation-bicep-curl-counter/ · on iPhone, Share → Add to Home Screen for a full-screen app.
+**Try it:** https://naarrzz.github.io/flexandcount · on iPhone, tap the download icon in the app for the Add to Home Screen steps (full screen, no browser bars).
 
 ## It started as a school project
 
